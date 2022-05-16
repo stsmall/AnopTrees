@@ -24,7 +24,7 @@ import gzip
 import argparse
 import contextlib
 from collections import defaultdict
-import contextlib
+
 
 def count_allele(counts_line, ingroup):
     """Count alleles.
@@ -68,6 +68,33 @@ def count_allele(counts_line, ingroup):
     return anc_list
 
 
+def count_allele_tab(counts_line, ingroup):
+    """Count alleles.
+
+    Parameters
+    ----------
+    ancdict : TYPE
+        DESCRIPTION.
+    counts_line : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    ancdict : dict
+        dict with building states
+    hap : int
+        number of haplotypes
+
+    """
+    bp_order = ["A", "C", "G", "T"]
+    anc_list = [0, 0, 0, 0]  # A C G T
+    ref = counts_line[3]
+    with contextlib.suppress(ValueError):
+        bp_ix = bp_order.index(ref)
+        anc_list[bp_ix] = 1
+    return anc_list
+
+
 def estsfs_format(file_ingroup, file_outgroup):
     """Read in allele counts for est-sfs input.
 
@@ -102,6 +129,9 @@ def estsfs_format(file_ingroup, file_outgroup):
             anc_dict[site].append(anc_counts)
     # get outgroup counts
     for file in outgroups:
+        tab = False
+        if file.endswith(".tab.gz"):
+            tab = True
         with gzip.open(file, 'r') as counts:
             line = next(counts)  # skip header
             for line in counts:
@@ -111,7 +141,10 @@ def estsfs_format(file_ingroup, file_outgroup):
                 pos = line[1]
                 site = f'{chrom}_{pos}'
                 if site in anc_dict:
-                    anc_counts = count_allele(line, ingroup=False)
+                    if tab:
+                        anc_counts = count_allele_tab(line, ingroup=False)    
+                    else:
+                        anc_counts = count_allele(line, ingroup=False)
                     anc_dict[site].append(anc_counts)
 
     return anc_dict
@@ -131,6 +164,7 @@ def estsfs_infiles(anc_dict, n_outgroup):
 
     """
     # create input file
+    counts = []
     first = next(iter(anc_dict.keys()))
     chrom = first.split("_")[0]
     with open(f"{chrom}.pos.txt", 'w') as out:
