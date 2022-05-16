@@ -22,6 +22,7 @@ Notes
 import sys
 import gzip
 import argparse
+import contextlib
 from collections import defaultdict
 
 
@@ -54,22 +55,16 @@ def count_allele(counts_line, ingroup):
             anc_list[bp_ix] += ref_count
         else:
             anc_list[bp_ix] = 1
-    try:
+    with contextlib.suppress(IndexError):
         alt, alt_count = counts_line[5].split(":")
         alt_count = int(alt_count)
         if len(alt) == 1 and alt_count > 0:
-            try:
+            with contextlib.suppress(ValueError):
                 bp_ix = bp_order.index(alt)
                 if ingroup:
                     anc_list[bp_ix] += alt_count
-                else:
-                    if sum(anc_list) == 0:
-                        anc_list[bp_ix] = 1
-            except ValueError:
-                pass
-    except IndexError:
-        pass
-
+                elif sum(anc_list) == 0:
+                    anc_list[bp_ix] = 1
     return anc_list
 
 
@@ -138,27 +133,25 @@ def estsfs_infiles(anc_dict, n_outgroup):
     # create input file
     first = next(iter(anc_dict.keys()))
     chrom = first.split("_")[0]
-    out = open(f"{chrom}.pos.txt", 'w')
-    with open(f"{chrom}.est.infile", 'w') as est:
-        for key in anc_dict:
-            chrom, pos = key.split("_")
-            counts = [",".join(map(str, x)) for x in anc_dict[key]]
-            while len(counts) < (n_outgroup + 1):
-                counts.append('0,0,0,0')
-            est.write(f'{" ".join(counts)}\n')
-            out.write(f"{chrom}\t{pos}\n")
-    out.close()
+    with open(f"{chrom}.pos.txt", 'w') as out:
+        with open(f"{chrom}.est.infile", 'w') as est:
+            for key in anc_dict:
+                chrom, pos = key.split("_")
+                counts = [",".join(map(str, x)) for x in anc_dict[key]]
+                while len(counts) < (n_outgroup + 1):
+                    counts.append('0,0,0,0')
+                est.write(f'{" ".join(counts)}\n')
+                out.write(f"{chrom}\t{pos}\n")
     # create config file
     n_outgroups = len(counts) - 1
-    config = open(f"{chrom}.config.file", 'w')
-    config.write(f'n_outgroup={n_outgroups}\nmodel 1\nnrandom 1')
-    config.close()
+    with open(f"{chrom}.config.file", 'w') as config:
+        config.write(f'n_outgroup={n_outgroups}\nmodel 1\nnrandom 1')
 
 
 def parse_args(args_in):
     """Parse args."""
-    parser = argparse.ArgumentParser(prog=sys.argv[0],
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    proghelp = argparse.ArgumentDefaultsHelpFormatter
+    parser = argparse.ArgumentParser(prog=sys.argv[0], formatter_class=proghelp)
     parser.add_argument('-i', "--ingroup", type=str, required=True,
                         help="ingroup/focalgroup counts")
     parser.add_argument('-o', "--outgroup", type=str, nargs='+', required=True,
