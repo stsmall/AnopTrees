@@ -24,7 +24,7 @@ import gzip
 import argparse
 import contextlib
 from collections import defaultdict
-
+import contextlib
 
 def count_allele(counts_line, ingroup):
     """Count alleles.
