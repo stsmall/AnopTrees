@@ -1,0 +1,17 @@
+vcftools --gzvcf AnfunSG.liftover.biSNP.RO.outgroup.vcf.gz --remove-indv rivulorum.F790.Kwa --remove-indv rivulorum.F794.Kwa --remove-indv anop_1007C2_Kenya --remove-indv anop_237C26_Zambia --remove-indv outgroup --counts --out Ingroup.allele_counts.out
+python ~/programs_that_work/An_funestus/estsfs_format.py -i Ingroup.allele_counts.out.frq.count -n 100 4 4 -o1 outgroup.ansp.allele_counts.out.frq.count -o2 outgroup.riv.allele_counts.out.frq.count
+grep "3L" est-sfs.data.txt| cut -d" " -f1-2 > 3L.pos
+grep "3L" est-sfs.data.txt| cut -d" " -f3-5 > 3L.data.in
+split -l 100000 X.data.in
+# run est-sfs on all files
+ls -1 x* | parallel -P 40 -N 1 '~/programs_that_work/est-sfs-release-2.03/est-sfs ../config-file.txt {} ../seedfile.txt 2L.{}.sfs 2L.{}.pvalues'
+# cat together split runs
+for p in *.pvalues;do               
+grep -v "^0" $p >> X.est-sfs.out
+done
+# paste in chr positions
+paste <(paste < X.pos ) <(paste < X.est-sfs ) > X.est-sfs.out
+# remerge all chroms
+cat *.est-sfs.out > est-sfs.data.out
+# python to repolarize derived
+python ~/programs_that_work/An_funestus/derivedVCF.py -v test.recode.vcf -e est-sfs.data.out

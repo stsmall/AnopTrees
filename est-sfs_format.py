@@ -5,7 +5,7 @@ Created on Fri Sep 11 12:04:20 2020
 @author: Scott T. Small
 
 Use the est-sfs program to add probabilistic ancestral states to a VCF file.
-est-sfs will also produce a unfolded site frequence spectrum.
+est-sfs will also produce a unfolded site frequency spectrum.
 
 Example
 -------
@@ -19,30 +19,27 @@ Notes
     2) count files must be zipped
 
 """
-import sys
-import gzip
 import argparse
 import contextlib
+import gzip
+import sys
 from collections import defaultdict
 
 
 def count_allele(counts_line, ingroup):
-    """Count alleles.
+    """count alleles from vcftools count format.
 
     Parameters
     ----------
-    ancdict : TYPE
-        DESCRIPTION.
-    counts_line : TYPE
-        DESCRIPTION.
+    counts_line : _type_
+        _description_
+    ingroup : _type_
+        _description_
 
     Returns
     -------
-    ancdict : dict
-        dict with building states
-    hap : int
-        number of haplotypes
-
+    _type_
+        _description_
     """
     bp_order = ["A", "C", "G", "T"]
     anc_list = [0, 0, 0, 0]  # A C G T
@@ -68,23 +65,18 @@ def count_allele(counts_line, ingroup):
     return anc_list
 
 
-def count_allele_tab(counts_line, ingroup):
-    """Count alleles.
+def count_allele_tab(counts_line):
+    """ counts alleles in tab format
 
     Parameters
     ----------
-    ancdict : TYPE
-        DESCRIPTION.
-    counts_line : TYPE
-        DESCRIPTION.
+    counts_line : _type_
+        _description_
 
     Returns
     -------
-    ancdict : dict
-        dict with building states
-    hap : int
-        number of haplotypes
-
+    _type_
+        _description_
     """
     bp_order = ["A", "C", "G", "T"]
     anc_list = [0, 0, 0, 0]  # A C G T
@@ -142,7 +134,7 @@ def estsfs_format(file_ingroup, file_outgroup):
                 site = f'{chrom}_{pos}'
                 if site in anc_dict:
                     if tab:
-                        anc_counts = count_allele_tab(line, ingroup=False)    
+                        anc_counts = count_allele_tab(line)
                     else:
                         anc_counts = count_allele(line, ingroup=False)
                     anc_dict[site].append(anc_counts)
@@ -164,6 +156,7 @@ def estsfs_infiles(anc_dict, n_outgroup):
 
     """
     # create input file
+    bases = ["A", "G", "C", "T"]
     counts = []
     first = next(iter(anc_dict.keys()))
     chrom = first.split("_")[0]
@@ -175,7 +168,10 @@ def estsfs_infiles(anc_dict, n_outgroup):
                 while len(counts) < (n_outgroup + 1):
                     counts.append('0,0,0,0')
                 est.write(f'{" ".join(counts)}\n')
-                out.write(f"{chrom}\t{pos}\n")
+                anc_counts = anc_dict[key][0]
+                maj_ix = anc_counts.index(max(anc_counts))
+                maj_allele = bases[maj_ix]
+                out.write(f"{chrom}\t{pos}\t{maj_allele}\n")
     # create config file
     n_outgroups = len(counts) - 1
     with open(f"{chrom}.config.file", 'w') as config:
