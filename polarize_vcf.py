@@ -1,24 +1,26 @@
-# -*- coding: utf-8 -*-
+# -*-coding:utf-8 -*-
 """
-Created on Mon Nov 30 09:14:16 2020
-@author: Scott T. Small
+@File    :   polarize_vcf.py
+@Time    :   2022/05/18 12:52:46
+@Author  :   Scott T Small
+@Version :   1.0
+@Contact :   stsmall@gmail.com
+@License :   Released under MIT License Copyright (c) 2022 Scott T. Small
+@Desc    :   Reorder VCF to the ancestral allele.
+@Notes : The ancestral allele is expected to be specified in the INFO line
+        as AA=str.Optional to another field with the probability. Only
+        reorients the gt AND not the full FORMAT. So 1/1 will be 0/0 bu
+        the remainder of the fields will not be changed
+@Usage : python polarize_vcf.py VCF
 
-Reorder VCF to the ancestral allele. The ancestral allele is expected to be
-specified in the INFO line as AA=str. Optional to another field with the probability.
-
-*Only reorients the gt not the full FORMAT. So 1/1 will be 0/0 but the remainder
-of the fields will not be changed
-
-Example
--------
-
-    $ python vcf2derived_allele.py VCF
 
 """
-import sys
 import argparse
 import gzip
+import sys
+import gzip
 import tqdm
+
 
 CHROMDICT = {}
 print("GLOBAL declared for chrom lengths, change line 26 or comment to infer from VCF")

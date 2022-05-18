@@ -1,24 +1,18 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# -*-coding:utf-8 -*-
 """
-Created on Fri Sep 11 12:04:20 2020
-@author: Scott T. Small
-
-Use the est-sfs program to add probabilistic ancestral states to a VCF file.
-est-sfs will also produce a unfolded site frequency spectrum.
-
-Example
--------
-
-    $ python est-sfs_format.py -i ingroup -o outgroup1 outgroup2
-
-
-Notes
------
-    1) requires the allele counts from output of vcftools --counts
-    2) count files must be zipped
-
+@File    :   estsfs_format.py
+@Time    :   2022/05/18 13:03:07
+@Author  :   Scott T Small
+@Version :   1.0
+@Contact :   stsmall@gmail.com
+@License :   Released under MIT License Copyright (c) 2022 Scott T. Small
+@Desc    :   Use the est-sfs program to infer ancestral states and uSFS.
+@Notes   :   1) requires the allele counts from output of vcftools --counts
+            2) count files must be gzipped
+@Usage   :   python estsfs_format.py -i ingroup -o outgroup1 outgroup2
 """
+
+
 import argparse
 import contextlib
 import gzip
@@ -180,8 +174,8 @@ def estsfs_infiles(anc_dict, n_outgroup):
 
 def parse_args(args_in):
     """Parse args."""
-    proghelp = argparse.ArgumentDefaultsHelpFormatter
-    parser = argparse.ArgumentParser(prog=sys.argv[0], formatter_class=proghelp)
+    prog = argparse.ArgumentDefaultsHelpFormatter
+    parser = argparse.ArgumentParser(prog=sys.argv[0], formatter_class=prog)
     parser.add_argument('-i', "--ingroup", type=str, required=True,
                         help="ingroup/focalgroup counts")
     parser.add_argument('-o', "--outgroup", type=str, nargs='+', required=True,
