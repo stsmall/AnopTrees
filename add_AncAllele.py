@@ -37,28 +37,59 @@ def add_aa(est_dt, vcf_infile):
     vcf_infile : _type_
         _description_
     """
+    bases = "ACGT"
+    node_bases = ["AA", "AC", "AG", "AT", "CA", "CC", "CG", "CT",
+                  "GA", "GC", "GG", "GT", "TA", "TC", "TG", "TT"]
     with open(f"{vcf_infile}.derived", 'w') as f:
         with gzip.open(vcf_infile, 'r') as vcf:
             for line in vcf:
                 line = line.decode()
                 if line.startswith("#"):
+                    if line.startswith("##FORMAT"):
+                        f.write('##INFO=<ID=AA,Number=1,Type=String,Description="Anc Allele">\n')
+                        f.write('##INFO=<ID=AAProb,Number=A,Type=Float,Description="Prob Maj is Anc">\n')
                     f.write(line)
                 else:
                     lin = line.split()
                     chrom = lin[0]
                     pos = lin[1]
                     ref = lin[3]
+                    alt = lin[4]
                     fields = lin[7].split(";")
                     # find derived
                     chrom_pos = f"{chrom}_{pos}"
                     try:
-                        AA, AAprob = est_dt[chrom_pos]
+                        anc = est_dt[chrom_pos]
+                        maj = anc[0]
+                        counts = list(map(int, anc[1].split(",")))
+                        assert bases[counts.index(max(counts))] == maj
+                        minor = bases[counts.index(min(counts))]
+                        prob = float(anc[2])
+                        if prob >= 0.50:
+                            AA, AAprob = [maj, prob]
+                        else:
+                            aa_root = list(map(float, anc[3:]))
+                            # check for ties
+                            if len(aa_root) == len(set(aa_root)):
+                                alt_ix = aa_root.index(max(aa_root))
+                                assert minor in node_bases[alt_ix]
+                                AA, AAprob = [minor, 1-prob]
+                            else:
+                                AA, AAprob = [maj, "maj"]
                     except KeyError:
-                        AA, AAprob = [ref, 0.0]
+                        # count for major
+                        calt = 0
+                        cref = 0
+                        for sample in lin[9:]:
+                            gt = sample.split(":")[0]
+                            calt += gt.count('1')
+                            cref += gt.count('0')
+                        maj = ref if cref >= calt else alt
+                        AA, AAprob = [maj, "maj"]
                     if len(fields) == 1 and "." in fields:
-                        lin[7] = f"AA={AA};AAprob={AAprob}"
+                        lin[7] = f"AA={AA};AAProb={AAprob}"
                     else:
-                        fields.insert(0, f"AA={AA};AAprob={AAprob}")
+                        fields.insert(0, f"AA={AA};AAProb={AAprob}")
                         lin[7] = ";".join(fields)
                     f.write("{}\n".format("\t".join(lin)))
     return None

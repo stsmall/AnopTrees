@@ -18,7 +18,7 @@
 import argparse
 import gzip
 import sys
-import gzip
+
 import tqdm
 
 
