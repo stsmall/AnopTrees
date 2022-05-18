@@ -72,7 +72,7 @@ def add_aa(est_dt, vcf_infile):
                         else:
                             aa_root = list(map(float, anc[3:]))
                             # check for ties
-                            if len(aa_root) == len(set(aa_root)):
+                            if sorted(aa_root)[0] > sorted(aa_root)[1]:
                                 alt_ix = aa_root.index(max(aa_root))
                                 assert minor in node_bases[alt_ix]
                                 AA, AAprob = [minor, 1-prob]
