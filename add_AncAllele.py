@@ -41,7 +41,8 @@ def add_aa(est_dt, vcf_infile):
     bases = "ACGT"
     node_bases = ["AA", "AC", "AG", "AT", "CA", "CC", "CG", "CT",
                   "GA", "GC", "GG", "GT", "TA", "TC", "TG", "TT"]
-    with open(f"{vcf_infile}.derived", 'w') as f:
+    outfile_name = vcf_infile.removesuffix(".vcf.gz")
+    with open(f"{outfile_name}.derived.vcf", 'w') as f:
         with gzip.open(vcf_infile, 'r') as vcf:
             for line in vcf:
                 line = line.decode()
