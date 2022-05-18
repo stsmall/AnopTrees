@@ -37,6 +37,7 @@ def add_aa(est_dt, vcf_infile):
     vcf_infile : _type_
         _description_
     """
+    flipped = 0
     bases = "ACGT"
     node_bases = ["AA", "AC", "AG", "AT", "CA", "CC", "CG", "CT",
                   "GA", "GC", "GG", "GT", "TA", "TC", "TG", "TT"]
@@ -74,8 +75,9 @@ def add_aa(est_dt, vcf_infile):
                                 alt_ix = aa_root.index(max(aa_root))
                                 assert minor in node_bases[alt_ix]
                                 AA, AAprob = [minor, 1-prob]
+                                flipped += 1
                             else:
-                                AA, AAprob = [maj, "maj"]
+                                AA, AAprob = [maj, "maje"]
                     except KeyError:
                         # count for major
                         calt = 0
@@ -85,13 +87,14 @@ def add_aa(est_dt, vcf_infile):
                             calt += gt.count('1')
                             cref += gt.count('0')
                         maj = ref if cref >= calt else alt
-                        AA, AAprob = [maj, "maj"]
+                        AA, AAprob = [maj, "majm"]
                     if len(fields) == 1 and "." in fields:
                         lin[7] = f"AA={AA};AAProb={AAprob}"
                     else:
                         fields.insert(0, f"AA={AA};AAProb={AAprob}")
                         lin[7] = ";".join(fields)
                     f.write("{}\n".format("\t".join(lin)))
+    print(f"{flipped} sites where anc is minor")
     return None
 
 
