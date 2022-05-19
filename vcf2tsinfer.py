@@ -91,14 +91,13 @@ def add_diploid_sites(vcf, samples):
             pos = variant.POS
         if any(not phased for _, _, phased in variant.genotypes):  # was ([TEXT]] 
             raise ValueError("Unphased genotypes for variant at position", pos)
-
         alleles = [variant.REF] + variant.ALT
         ancestral = variant.INFO.get('AA', variant.REF)
         ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
         allele_index = {old_index: ordered_alleles.index(allele) for old_index,
                         allele in enumerate(alleles)}
         genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
-        samples.add_site(pos, genotypes=genotypes, alleles=alleles)
+        samples.add_site(pos, genotypes=genotypes, alleles=ordered_alleles)
     progressbar.close()
 
 
@@ -139,11 +138,8 @@ def main():
     # =========================================================================
 
     vcf = cyvcf2.VCF(vcf_path)
-    with tsinfer.SampleData(path=f"{outfile}.samples",
-                            sequence_length=chrom_len(vcf),
-                            num_flush_threads=threads,
-                            max_file_size=2**37) as samples:
-
+    with tsinfer.SampleData(path=f"{outfile}.samples", sequence_length=chrom_len(vcf),
+                            num_flush_threads=threads) as samples:
         add_metadata(vcf, samples, meta, label_by)
         add_diploid_sites(vcf, samples)
 
