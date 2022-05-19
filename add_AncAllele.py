@@ -78,15 +78,19 @@ def add_aa(est_dt, vcf_infile):
                             if sorted(aa_root)[-1] > sorted(aa_root)[-2]:
                                 alt_ix = aa_root.index(max(aa_root))
                                 nb = node_bases[alt_ix]
-                                if minor not in nb:
-                                    if nb[1] == nb[0]:
-                                        minor = nb[0]
-                                    print(f"{lin[:7]} : {minor} : {counts} : {prob} : {nb} : {aa_root}")
-                                    if maj not in nb:
+                                if nb[0] == nb[1]:
+                                    if minor in nb:
+                                        p = max(aa_root)
+                                        flipped += 1
+                                    elif maj in nb:
+                                        p = max(aa_root)
+                                    else:
+                                        p = "none"
                                         nomatch += 1
+                                    AA, AAprob = [nb[0], p]
                                 else:
-                                    flipped += 1
-                                AA, AAprob = [minor, max(aa_root)]
+                                    AA, AAprob = [nb, max(aa_root)]
+                                    print(f"{lin[:7]} : {counts} : {prob} : {nb} : {aa_root}")
                             else:
                                 AA, AAprob = [maj, "maje"]
                     except KeyError:
