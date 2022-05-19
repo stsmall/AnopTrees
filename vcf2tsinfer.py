@@ -25,6 +25,7 @@ import sys
 import cyvcf2
 import pandas as pd
 import tqdm
+import tskit
 import tsinfer
 
 # TODO: allow parallel loading of large VCFs
@@ -55,7 +56,9 @@ def add_metadata(vcf, samples, meta, label_by):
     for indiv in vcf.samples:
         meta_dict = meta.loc[indiv].to_dict()
         pop = pop_lookup[meta.loc[indiv][label_by]]
-        samples.add_individual(ploidy=2, metadata=meta_dict, population=pop)
+        lat = meta.loc[indiv]["latitude"]
+        lon = meta.loc[indiv]["longitude"]
+        samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
 
 
 def add_diploid_sites(vcf, samples):
@@ -81,24 +84,29 @@ def add_diploid_sites(vcf, samples):
     None.
 
     """
-    progressbar = tqdm.tqdm(total=samples.sequence_length, desc="Read VCF", unit='bp')
-    pos = 0
-    for variant in vcf:
-        progressbar.update(variant.POS - pos)
-        if pos == variant.POS:
-            raise ValueError("Duplicate positions for variant at position", pos)
-        else:
-            pos = variant.POS
-        if any(not phased for _, _, phased in variant.genotypes):  # was ([TEXT]] 
-            raise ValueError("Unphased genotypes for variant at position", pos)
-        alleles = [variant.REF] + variant.ALT
-        ancestral = variant.INFO.get('AA', variant.REF)
-        ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
-        allele_index = {old_index: ordered_alleles.index(allele) for old_index,
-                        allele in enumerate(alleles)}
-        genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
-        samples.add_site(pos, genotypes=genotypes, alleles=ordered_alleles)
-    progressbar.close()
+    with open("missing_data.txt", 'w') as f:
+        progressbar = tqdm.tqdm(total=samples.sequence_length, desc="Read VCF", unit='bp')
+        pos = 0
+        for variant in vcf:
+            progressbar.update(variant.POS - pos)
+            if pos == variant.POS:
+                raise ValueError("Duplicate positions for variant at position", pos)
+            else:
+                pos = variant.POS
+            if any(not phased for _, _, phased in variant.genotypes):  # was ([TEXT]]
+                raise ValueError("Unphased genotypes for variant at position", pos)
+            alleles = [variant.REF] + variant.ALT
+            ancestral = variant.INFO.get('AA', variant.REF)
+            ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
+            allele_index = {old_index: ordered_alleles.index(allele) for old_index,
+                            allele in enumerate(alleles)}
+            genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
+            missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
+            for i in missing_genos:
+                genotypes[i] = tskit.MISSING_DATA
+                f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
+            samples.add_site(pos, genotypes=genotypes, alleles=ordered_alleles)
+        progressbar.close()
 
 
 def chrom_len(vcf):
