@@ -38,6 +38,7 @@ def add_aa(est_dt, vcf_infile):
         _description_
     """
     flipped = 0
+    nomatch = 0
     bases = "ACGT"
     node_bases = ["AA", "AC", "AG", "AT", "CA", "CC", "CG", "CT",
                   "GA", "GC", "GG", "GT", "TA", "TC", "TG", "TT"]
@@ -81,6 +82,8 @@ def add_aa(est_dt, vcf_infile):
                                     if nb[1] == nb[0]:
                                         minor = nb[0]
                                     print(f"{lin[:7]} : {minor} : {counts} : {prob} : {nb} : {aa_root}")
+                                    if maj not in nb:
+                                        nomatch += 1
                                 else:
                                     flipped += 1
                                 AA, AAprob = [minor, max(aa_root)]
@@ -103,6 +106,7 @@ def add_aa(est_dt, vcf_infile):
                         lin[7] = ";".join(fields)
                     f.write("{}\n".format("\t".join(lin)))
     print(f"{flipped} sites where anc is minor")
+    print(f"{nomatch} sites where anc is not ref/alt")
     return None
 
 
