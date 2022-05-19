@@ -1,25 +1,23 @@
 # -*-coding:utf-8 -*-
 """
-@File    :   add_AncAllele.py
-@Time    :   2022/05/18 13:16:01
-@Author  :   Scott T Small
-@Version :   1.0
-@Contact :   stsmall@gmail.com
-@License :   Released under MIT License Copyright (c) 2022 Scott T. Small
-@Desc    :   Adds the AA and AAProb fields to VCF from est-sfs output
-@Notes   :   there can be 5 categories of AAProb
-             min : min was ancestral
-             not : neither ref/alt are anc
-             dbl : the root had two diff alleles (not common)
-             maj : the prob of maj/min was equal, default to maj
-             NA : missing from est-sfs output, default to maj
-@Usage   :   python add_AncAllele.py -v VCF -e est-sfs.outfile
+@File    :  add_AncAllele.py
+@Time    :  2022/05/18 13:16:01
+@Author  :  Scott T Small
+@Version :  1.0
+@Contact :  stsmall@gmail.com
+@License :  Released under MIT License Copyright (c) 2022 Scott T. Small
+@Desc    :  Adds the AA and AAProb fields to VCF from est-sfs output
+@Notes   :  there can be 5 categories of AAProb
+            min : min was ancestral
+            not : neither ref/alt are anc
+            dbl : the root had two diff alleles (not common)
+            maj : the prob of maj/min was equal, default to maj
+            NA : missing from est-sfs output, default to maj
+@Usage   :  python add_AncAllele.py -v VCF -e est-sfs.outfile
 """
 import argparse
 import sys
 import gzip
-
-contig_dt = {"X": 24393108, "2L": 49364325, "3L": 41963435, "2R": 61545105, "3R": 53200684}
 
 
 def read_estsfs(est_file):
@@ -48,7 +46,7 @@ def add_aa(est_dt, vcf_infile):
     bases = "ACGT"
     writeaa = True
     node_bases = ["AA", "AC", "AG", "AT", "CA", "CC", "CG", "CT",
-                  "GA", "GC", "GG", "GT", "TA", "TC", "TG", "TT"]
+                "GA", "GC", "GG", "GT", "TA", "TC", "TG", "TT"]
     outfile_name = vcf_infile.removesuffix(".vcf.gz")
     with open(f"{outfile_name}.derived.vcf", 'w') as f:
         with gzip.open(vcf_infile, 'r') as vcf:
@@ -132,6 +130,9 @@ def parse_args(args_in):
     parser = argparse.ArgumentParser(prog=sys.argv[0], formatter_class=prog)
     parser.add_argument('-v', "--vcfFile", type=str, required=True, help="")
     parser.add_argument('-e', "--estFile", type=str, required=True, help="")
+    parser.add_argument("--chrom_len", default='gamb_colu', nargs='?',
+                        choices=["gamb_colu", "funestus"],
+                        help="add chrom_len for gamb_colu or fun")
     return parser.parse_args(args_in)
 
 
@@ -141,6 +142,18 @@ def main():
     #  Gather args
     # =================================================================
     args = parse_args(sys.argv[1:])
+
+    # ====
+    # Globals
+    # ====
+    global contig_dt
+    contig_dt = {"2R": 61545105, "2L": 49364325,
+                 "3R": 53200684, "3L": 41963435, "X": 24393108}
+    if args.chrom_len == "funestus":
+        contig_dt = contig_dt = {"2R": 58000000, "2L": 41479438,
+                                 "3R": 44000000, "3L": 49833897,
+                                 "X": 17661987,
+                                 "2": 99479338, "3": 93833897}
     # =================================================================
     #  Main executions
     # =================================================================
