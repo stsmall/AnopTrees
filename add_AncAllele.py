@@ -76,10 +76,16 @@ def add_aa(est_dt, vcf_infile):
                             # check for ties
                             if sorted(aa_root)[-1] > sorted(aa_root)[-2]:
                                 alt_ix = aa_root.index(max(aa_root))
-                                if minor not in node_bases[alt_ix]:
-                                    print(f"{lin[:7]} : {counts} : {node_bases[alt_ix]}")
+                                nb = node_bases[alt_ix]
+                                if minor not in nb:
+                                    if nb[1] == nb[0]:
+                                        minor = nb[0]
+                                    print(f"{lin[:7]} : {minor} : \
+                                        {counts} : {prob} : {nb} : \
+                                        {aa_root}")
+                                else:
+                                    flipped += 1
                                 AA, AAprob = [minor, max(aa_root)]
-                                flipped += 1
                             else:
                                 AA, AAprob = [maj, "maje"]
                     except KeyError:
