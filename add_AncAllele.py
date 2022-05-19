@@ -80,9 +80,7 @@ def add_aa(est_dt, vcf_infile):
                                 if minor not in nb:
                                     if nb[1] == nb[0]:
                                         minor = nb[0]
-                                    print(f"{lin[:7]} : {minor} : \
-                                        {counts} : {prob} : {nb} : \
-                                        {aa_root}")
+                                    print(f"{lin[:7]} : {minor} : {counts} : {prob} : {nb} : {aa_root}")
                                 else:
                                     flipped += 1
                                 AA, AAprob = [minor, max(aa_root)]
