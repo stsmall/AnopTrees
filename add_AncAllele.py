@@ -85,7 +85,7 @@ def add_aa(est_dt, vcf_infile):
                                     elif maj in nb:
                                         p = max(aa_root)
                                     else:
-                                        p = "none"
+                                        p = f"{max(aa_root)}-none"
                                         nomatch += 1
                                     AA, AAprob = [nb[0], p]
                                 else:
