@@ -58,7 +58,7 @@ def add_aa(est_dt, vcf_infile):
                         f.write('##INFO=<ID=AA,Number=1,Type=String,Description="Anc Allele">\n')
                         f.write('##INFO=<ID=AAProb,Number=A,Type=Float,Description="Prob Maj is Anc">\n')
                     if line.startswith("##contig"):
-                        contig = line.split("=")[:-1]
+                        contig = line.split("=")[-1].removesuffix(">")
                         f.write(f"##contig=<ID=X,length={contig_dt[contig]}>\n")
                     f.write(line)
                 else:
