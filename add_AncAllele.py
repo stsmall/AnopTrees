@@ -64,8 +64,10 @@ def add_aa(est_dt, vcf_infile):
                         anc = est_dt[chrom_pos]
                         maj = anc[0]
                         counts = list(map(int, anc[1].split(",")))
-                        assert bases[counts.index(max(counts))] == maj
-                        minor = bases[counts.index(min(counts))]
+                        # num_alleles = counts.count(0)
+                        min_ix, max_ix = sorted(counts)[-2:]
+                        assert bases[counts.index(max_ix)] == maj
+                        minor = bases[counts.index(min_ix)]
                         prob = float(anc[2])
                         if prob >= 0.50:
                             AA, AAprob = [maj, prob]
@@ -75,7 +77,7 @@ def add_aa(est_dt, vcf_infile):
                             if sorted(aa_root)[-1] > sorted(aa_root)[-2]:
                                 alt_ix = aa_root.index(max(aa_root))
                                 assert minor in node_bases[alt_ix]
-                                AA, AAprob = [minor, 1-prob]
+                                AA, AAprob = [minor, max(aa_root)]
                                 flipped += 1
                             else:
                                 AA, AAprob = [maj, "maje"]
