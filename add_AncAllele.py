@@ -46,6 +46,7 @@ def add_aa(est_dt, vcf_infile):
     flipped = 0
     nomatch = 0
     bases = "ACGT"
+    writeaa = True
     node_bases = ["AA", "AC", "AG", "AT", "CA", "CC", "CG", "CT",
                   "GA", "GC", "GG", "GT", "TA", "TC", "TG", "TT"]
     outfile_name = vcf_infile.removesuffix(".vcf.gz")
@@ -54,14 +55,16 @@ def add_aa(est_dt, vcf_infile):
             for line in vcf:
                 line = line.decode()
                 if line.startswith("#"):
-                    if line.startswith("##FORMAT"):
+                    if line.startswith("##FORMAT") and writeaa:
                         f.write('##INFO=<ID=AA,Number=1,Type=String,Description="Anc Allele">\n')
                         f.write('##INFO=<ID=AAProb,Number=A,Type=Float,Description="Prob Maj is Anc">\n')
-                    if line.startswith("##contig"):
+                        writeaa = False
+                    elif line.startswith("##contig"):
                         contig = line.strip()
                         contig1 = contig.split("=")[-1]
-                        f.write(f"##contig=<ID={contig},length={contig_dt[contig1[:-1]]}>\n")
-                    f.write(line)
+                        f.write(f"##contig=<ID={contig1[:-1]},length={contig_dt[contig1[:-1]]}>\n")
+                    else:
+                        f.write(line)
                 else:
                     lin = line.split()
                     chrom = lin[0]
