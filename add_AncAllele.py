@@ -80,19 +80,18 @@ def add_aa(est_dt, vcf_infile):
                                 nb = node_bases[alt_ix]
                                 if nb[0] == nb[1]:
                                     if minor in nb:
-                                        p = max(aa_root)
+                                        p = f"{max(aa_root)}-min"
                                         flipped += 1
                                     elif maj in nb:
                                         p = max(aa_root)
                                     else:
-                                        p = f"{max(aa_root)}-none"
+                                        p = f"{max(aa_root)}-not"
                                         nomatch += 1
                                     AA, AAprob = [nb[0], p]
                                 else:
-                                    AA, AAprob = [nb, max(aa_root)]
-                                    print(f"{lin[:7]} : {counts} : {prob} : {nb} : {aa_root}")
+                                    AA, AAprob = [nb, f"{max(aa_root)}-dbl"]
                             else:
-                                AA, AAprob = [maj, "maje"]
+                                AA, AAprob = [maj, f"{max(aa_root)}-maj"]
                     except KeyError:
                         # count for major
                         calt = 0
@@ -102,7 +101,7 @@ def add_aa(est_dt, vcf_infile):
                             calt += gt.count('1')
                             cref += gt.count('0')
                         maj = ref if cref >= calt else alt
-                        AA, AAprob = [maj, "majm"]
+                        AA, AAprob = [maj, "NA"]
                     if len(fields) == 1 and "." in fields:
                         lin[7] = f"AA={AA};AAProb={AAprob}"
                     else:
