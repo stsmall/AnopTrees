@@ -6,9 +6,14 @@
 @Version :   1.0
 @Contact :   stsmall@gmail.com
 @License :   Released under MIT License Copyright (c) 2022 Scott T. Small
-@Desc    :   None
-@Notes   :   None
-@Usage   :   python add_AncAllele.py
+@Desc    :   Adds the AA and AAProb fields to VCF from est-sfs output
+@Notes   :   there can be 5 categories of AAProb
+             min : min was ancestral
+             not : neither ref/alt are anc
+             dbl : the root had two diff alleles (not common)
+             maj : the prob of maj/min was equal, default to maj
+             NA : missing from est-sfs output, default to maj
+@Usage   :   python add_AncAllele.py -v VCF -e est-sfs.outfile
 """
 
 import argparse
