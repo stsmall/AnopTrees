@@ -15,10 +15,11 @@
              NA : missing from est-sfs output, default to maj
 @Usage   :   python add_AncAllele.py -v VCF -e est-sfs.outfile
 """
-
 import argparse
 import sys
 import gzip
+
+contig_dt = {"X": 24393108, "2L": 49364325, "3L": 41963435, "2R": 61545105, "3R": 53200684}
 
 
 def read_estsfs(est_file):
@@ -56,6 +57,9 @@ def add_aa(est_dt, vcf_infile):
                     if line.startswith("##FORMAT"):
                         f.write('##INFO=<ID=AA,Number=1,Type=String,Description="Anc Allele">\n')
                         f.write('##INFO=<ID=AAProb,Number=A,Type=Float,Description="Prob Maj is Anc">\n')
+                    if line.startswith("##contig"):
+                        contig = line.split("=")[:-1]
+                        f.write(f"##contig=<ID=X,length={contig_dt[contig]}>\n")
                     f.write(line)
                 else:
                     lin = line.split()
