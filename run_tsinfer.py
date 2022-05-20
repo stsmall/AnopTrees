@@ -16,7 +16,7 @@ import argparse
 import os
 import tskit
 import tsinfer
-
+import tsdate
 
 def generate_ancestors(samples_fn, num_threads, prefix):
     sample_data = tsinfer.load(samples_fn)
@@ -54,11 +54,34 @@ def match_samples(samples_fn, inferred_anc_ts, num_threads, r_prob, m_prob, prec
         mismatch=m_prob,
         precision=precision,
         progress_monitor=True,
-        simplify=True,
+        simplify=False,
     )
-    ts_path = f"{prefix}.trees"
+    ts_path = f"{prefix}.no_simplify.trees"
     inferred_ts.dump(ts_path)
     return inferred_ts
+
+
+def reinfer_after_dating(samples_fn, dated_trees):
+    """Reinfer trees after adding dates using tsdate.py
+    
+    follows the example : https://github.com/tskit-dev/tsdate/issues/191
+
+    Parameters
+    ----------
+    samples_fn : _type_
+        _description_
+    dated_trees : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    dated = tskit.load(f"{dated_trees}.dated.trees").simplify()
+    sites_time = tsdate.sites_time_from_ts(dated) 
+    dated_samples = tsdate.add_sampledata_times(samples_fn, sites_time)   
+    return dated_samples
 
 
 def parse_args(args_in):
@@ -83,6 +106,7 @@ def parse_args(args_in):
     parser.add_argument("--mismatch_ms", default=1, help="")
     parser.add_argument("-p", "--precision", default=10, type=int,
                         help="The precision parameter to pass to the function")
+    parser.add_argument("--reinfer", action="store_true", help="reinfer on a dated tree")
     parser.add_argument("-V", "--version", action="version", version=versions)
     return parser.parse_args(args_in)
 
@@ -96,60 +120,69 @@ def main():
     r_prob = args.rho
     ma_prob = args.mismatch_ma
     ms_prob = args.mismatch_ms
+    prefix = args.prefix
+    threads = args.threads
+    samples = args.samples
     # =================================================================
     #  Main executions
     # =================================================================
-    if not os.path.isfile(args.samples):
+    if not os.path.isfile(samples):
         raise ValueError("No samples file")
+
+    if args.reinfer:
+        if not os.path.isfile(f"{prefix}.dated.trees"):
+            raise ValueError("only can reinfer on dated trees")
+        samples = reinfer_after_dating(samples, prefix)
+        prefix = f"{prefix}-reinfer"
 
     if args.step == "infer":
         anc = generate_ancestors(
-            args.samples,
-            args.threads,
-            args.prefix)
+            samples,
+            threads,
+            prefix)
         inferred_anc_ts = match_ancestors(
-            args.samples, 
+            samples, 
             anc, 
-            args.threads, 
+            threads, 
             args.precision, 
             r_prob, 
             ma_prob, 
-            args.prefix)
+            prefix)
         match_samples(
-            args.samples, 
+            samples, 
             inferred_anc_ts, 
-            args.threads, 
+            threads, 
             r_prob, 
             ms_prob, 
             args.precision, 
-            args.prefix)
+            prefix)
     
     if args.step == "GA":
         anc = generate_ancestors(
-            args.samples,
-            args.threads,
-            args.prefix)
+            samples,
+            threads,
+            prefix)
     if args.step == "MA":
         anc = tsinfer.load(f"{args.prefix}.truncated.ancestors")
         inferred_anc_ts = match_ancestors(
-            args.samples,
+            samples,
             anc,
-            args.threads,
+            threads,
             args.precision,
             r_prob,
             ma_prob,
-            args.prefix)
+            prefix)
     if args.step == "MS":
         anc = tsinfer.load(f"{args.prefix}.truncated.ancestors")
         inferred_anc_ts = tskit.load(f"{args.prefix}.atrees")
         match_samples(
-            args.samples,
+            samples,
             inferred_anc_ts,
-            args.threads,
+            threads,
             r_prob,
             ms_prob,
             args.precision,
-            args.prefix,
+            prefix,
         )
 
 

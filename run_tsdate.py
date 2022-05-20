@@ -13,9 +13,9 @@
 import sys
 import os
 import argparse
+import numpy as np
 import tsdate
 import tskit
-import tsinfer
 
 
 def parse_args(args_in):
@@ -30,6 +30,7 @@ def parse_args(args_in):
     parser.add_argument("--mutation-rate", default=1e-8, type=float, help="Mutation rate")
     parser.add_argument("--recombination-rate", default=1e-8, type=float, help="recombination rate")
     parser.add_argument("--threads", default=1, type=int, help="")
+    parser.add_argument("--flat_prior", action="store_true", help="use flat prior")
     parser.add_argument("-V", "--version", action="version", version=versions)
     return parser.parse_args(args_in)
 
@@ -46,13 +47,24 @@ def main():
     # =================================================================
     if not os.path.isfile(args.input):
         raise ValueError("No input tree sequence file")
+    # TODO: check unary option
     input_ts = tskit.load(args.input)
-    input_ts_pre = tsdate.preprocess_ts(input_ts)
-    prior = tsdate.build_prior_grid(input_ts_pre, Ne = args.Ne, approximate_priors=True)
+    # TODO: check preprocess defaults
+    input_ts_pre = tsdate.preprocess_ts(input_ts,
+                                        filter_populations=False,
+                                        filter_individuals=False,
+                                        filter_sites=False,)
+                                        # keep_unary=False,
+                                        # keep_unary_in_individuals=True,)
+    if args.flat_prior:
+        priors = tsdate.build_prior_grid(input_ts_pre, args.Ne)
+        priors.grid_data[:] = np.ones_like(priors.grid_data[:])  # flat?
+    else:    
+        priors = tsdate.build_prior_grid(input_ts_pre, Ne = args.Ne, approximate_priors=True)
     ts = tsdate.date(input_ts_pre,
                      mutation_rate=args.mutation_rate,
                      recombination_rate=args.recombination_rate,
-                     priors=prior,
+                     priors=priors,
                      num_threads=args.threads,
                      ignore_oldest_root=True,
                      progress=True)
