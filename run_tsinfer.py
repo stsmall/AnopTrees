@@ -19,8 +19,24 @@ import tsinfer
 import tsdate
 
 def generate_ancestors(samples_fn, num_threads, prefix):
+    """_summary_
+
+    Parameters
+    ----------
+    samples_fn : _type_
+        _description_
+    num_threads : _type_
+        _description_
+    prefix : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
     sample_data = tsinfer.load(samples_fn)
-    anc = tsinfer.generate_ancestors(
+    anc = tsinfer.generate_ancestors(   
         sample_data,
         num_threads=num_threads,
         path=f"{prefix}.ancestors",
@@ -28,8 +44,30 @@ def generate_ancestors(samples_fn, num_threads, prefix):
     )
     return anc
 
+def match_ancestors(samples_fn, anc, num_threads, r_prob, m_prob, prefix):
+    """_summary_
 
-def match_ancestors(samples_fn, anc, num_threads, precision, r_prob, m_prob, prefix):
+    Parameters
+    ----------
+    samples_fn : _type_
+        _description_
+    anc : _type_
+        _description_
+    num_threads : _type_
+        _description_
+    r_prob : _type_
+        _description_
+    m_prob : _type_
+        _description_
+    prefix : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    print(f"{num_threads},{r_prob},{m_prob}")
     sample_data = tsinfer.load(samples_fn)
     inferred_anc_ts = tsinfer.match_ancestors(
         sample_data,
@@ -38,13 +76,35 @@ def match_ancestors(samples_fn, anc, num_threads, precision, r_prob, m_prob, pre
         recombination_rate=r_prob,
         mismatch_ratio=m_prob,
         progress_monitor=True,
-    )
-    # precision=precision,
+    )   
     inferred_anc_ts.dump(f"{prefix}.atrees")
     return inferred_anc_ts
 
 
-def match_samples(samples_fn, inferred_anc_ts, num_threads, r_prob, m_prob, precision, prefix):
+def match_samples(samples_fn, inferred_anc_ts, num_threads, r_prob, m_prob, prefix):
+    """_summary_
+
+    Parameters
+    ----------
+    samples_fn : _type_
+        _description_
+    inferred_anc_ts : _type_
+        _description_
+    num_threads : _type_
+        _description_
+    r_prob : _type_
+        _description_
+    m_prob : _type_
+        _description_
+    prefix : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    print(f"{num_threads},{r_prob},{m_prob}")
     sample_data = tsinfer.load(samples_fn)
     inferred_ts = tsinfer.match_samples(
         sample_data,
@@ -55,7 +115,6 @@ def match_samples(samples_fn, inferred_anc_ts, num_threads, r_prob, m_prob, prec
         progress_monitor=True,
         simplify=False,
     )
-    # precision=precision,
     ts_path = f"{prefix}.no_simplify.trees"
     inferred_ts.dump(ts_path)
     return inferred_ts
@@ -101,11 +160,9 @@ def parse_args(args_in):
                         help="Which step of the algorithm to run:"
                         "generate ancestors (GA), match ancestors"
                         "(MA), or match samples (MS) or all three (infer)")
-    parser.add_argument("--recombination_rate", type=float, default=10e-8, help="")
+    parser.add_argument("--recombination_rate", type=float, default=1e-8, help="")
     parser.add_argument("--mismatch_ma", default=1, help="")
     parser.add_argument("--mismatch_ms", default=1, help="")
-    parser.add_argument("-p", "--precision", default=10, type=int,
-                        help="The precision parameter to pass to the function")
     parser.add_argument("--reinfer", action="store_true", help="reinfer on a dated tree")
     parser.add_argument("-V", "--version", action="version", version=versions)
     return parser.parse_args(args_in)
@@ -117,9 +174,9 @@ def main():
     #  Gather args
     # =================================================================
     args = parse_args(sys.argv[1:])
-    r_prob = args.recombination_rate
-    ma_prob = args.mismatch_ma
-    ms_prob = args.mismatch_ms
+    recombination_rate = args.recombination_rate
+    mismatch_ma = args.mismatch_ma
+    mismatch_ms = args.mismatch_ms
     prefix = args.prefix
     threads = args.threads
     samples = args.samples
@@ -137,53 +194,50 @@ def main():
 
     if args.step == "infer":
         anc = generate_ancestors(
-            samples,
-            threads,
-            prefix)
+            samples_fn=samples,
+            num_threads=threads,
+            prefix=prefix)
         inferred_anc_ts = match_ancestors(
-            samples, 
-            anc, 
-            threads, 
-            args.precision, 
-            r_prob, 
-            ma_prob, 
-            prefix)
+            samples_fn=samples, 
+            anc=anc, 
+            num_threads=threads, 
+            r_prob=recombination_rate, 
+            m_prob=mismatch_ma,
+            prefix=prefix
+            )
         match_samples(
-            samples, 
-            inferred_anc_ts, 
-            threads, 
-            r_prob, 
-            ms_prob, 
-            args.precision, 
-            prefix)
-    
+            samples_fn=samples, 
+            inferred_anc_ts=inferred_anc_ts, 
+            num_threads=threads, 
+            r_prob=recombination_rate, 
+            m_prob=mismatch_ms, 
+            prefix=prefix)
+
     if args.step == "GA":
         anc = generate_ancestors(
-            samples,
-            threads,
-            prefix)
+            samples_fn=samples,
+            num_threads=threads,
+            prefix=prefix)
     if args.step == "MA":
         anc = tsinfer.load(f"{args.prefix}.truncated.ancestors")
         inferred_anc_ts = match_ancestors(
-            samples,
-            anc,
-            threads,
-            args.precision,
-            r_prob,
-            ma_prob,
-            prefix)
+            samples_fn=samples, 
+            anc=anc, 
+            num_threads=threads, 
+            r_prob=recombination_rate, 
+            m_prob=mismatch_ma,
+            prefix=prefix
+            )
     if args.step == "MS":
         anc = tsinfer.load(f"{args.prefix}.truncated.ancestors")
-        inferred_anc_ts = tskit.load(f"{args.prefix}.atrees")
+        inferred_anc_ts = tskit.load(f"{prefix}.atrees")
         match_samples(
-            samples,
-            inferred_anc_ts,
-            threads,
-            r_prob,
-            ms_prob,
-            args.precision,
-            prefix,
-        )
+            samples_fn=samples, 
+            inferred_anc_ts=inferred_anc_ts, 
+            num_threads=threads, 
+            r_prob=recombination_rate, 
+            m_prob=mismatch_ms, 
+            prefix=prefix)
 
 
 if __name__ == "__main__":
