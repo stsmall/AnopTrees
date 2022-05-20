@@ -101,7 +101,7 @@ def parse_args(args_in):
                         help="Which step of the algorithm to run:"
                         "generate ancestors (GA), match ancestors"
                         "(MA), or match samples (MS) or all three (infer)")
-    parser.add_argument("--rho", default=0.01, help="")
+    parser.add_argument("--rho", type=float, default=0.01, help="")
     parser.add_argument("--mismatch_ma", default=1, help="")
     parser.add_argument("--mismatch_ms", default=1, help="")
     parser.add_argument("-p", "--precision", default=10, type=int,
