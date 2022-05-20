@@ -101,7 +101,7 @@ def parse_args(args_in):
                         help="Which step of the algorithm to run:"
                         "generate ancestors (GA), match ancestors"
                         "(MA), or match samples (MS) or all three (infer)")
-    parser.add_argument("--rho", type=float, default=10e-8, help="")
+    parser.add_argument("--recombination_rate", type=float, default=10e-8, help="")
     parser.add_argument("--mismatch_ma", default=1, help="")
     parser.add_argument("--mismatch_ms", default=1, help="")
     parser.add_argument("-p", "--precision", default=10, type=int,
@@ -117,7 +117,7 @@ def main():
     #  Gather args
     # =================================================================
     args = parse_args(sys.argv[1:])
-    r_prob = args.rho
+    r_prob = args.recombination_rate
     ma_prob = args.mismatch_ma
     ms_prob = args.mismatch_ms
     prefix = args.prefix
