@@ -35,11 +35,11 @@ def match_ancestors(samples_fn, anc, num_threads, precision, r_prob, m_prob, pre
         sample_data,
         anc,
         num_threads=num_threads,
-        precision=precision,
         recombination=r_prob,
         mismatch=m_prob,
         progress_monitor=True,
     )
+    # precision=precision,
     inferred_anc_ts.dump(f"{prefix}.atrees")
     return inferred_anc_ts
 
@@ -52,10 +52,10 @@ def match_samples(samples_fn, inferred_anc_ts, num_threads, r_prob, m_prob, prec
         num_threads=num_threads,
         recombination=r_prob,
         mismatch=m_prob,
-        precision=precision,
         progress_monitor=True,
         simplify=False,
     )
+    # precision=precision,
     ts_path = f"{prefix}.no_simplify.trees"
     inferred_ts.dump(ts_path)
     return inferred_ts
@@ -101,7 +101,7 @@ def parse_args(args_in):
                         help="Which step of the algorithm to run:"
                         "generate ancestors (GA), match ancestors"
                         "(MA), or match samples (MS) or all three (infer)")
-    parser.add_argument("--rho", type=float, default=0.01, help="")
+    parser.add_argument("--rho", type=float, default=10e-8, help="")
     parser.add_argument("--mismatch_ma", default=1, help="")
     parser.add_argument("--mismatch_ms", default=1, help="")
     parser.add_argument("-p", "--precision", default=10, type=int,
