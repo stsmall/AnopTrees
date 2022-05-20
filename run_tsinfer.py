@@ -2,7 +2,7 @@
 """
 @File    :  run_tsinfer.py
 @Time    :  2022/05/19 20:22:31
-@Author  :  Scott T Small 
+@Author  :  Scott T Small
 @Version :  1.0
 @Contact :  stsmall@gmail.com
 @License :  Released under MIT License Copyright (c) 2022 Scott T. Small
@@ -36,13 +36,10 @@ def generate_ancestors(samples_fn, num_threads, prefix):
         _description_
     """
     sample_data = tsinfer.load(samples_fn)
-    anc = tsinfer.generate_ancestors(   
-        sample_data,
-        num_threads=num_threads,
-        path=f"{prefix}.ancestors",
-        progress_monitor=True,
-    )
-    return anc
+    return tsinfer.generate_ancestors(sample_data,
+                                      num_threads=num_threads,
+                                      path=f"{prefix}.ancestors",
+                                      progress_monitor=True)
 
 def match_ancestors(samples_fn, anc, num_threads, r_prob, m_prob, prefix):
     """_summary_
@@ -75,8 +72,8 @@ def match_ancestors(samples_fn, anc, num_threads, r_prob, m_prob, prefix):
         num_threads=num_threads,
         recombination_rate=r_prob,
         mismatch_ratio=m_prob,
-        progress_monitor=True,
-    )   
+        progress_monitor=True
+    )
     inferred_anc_ts.dump(f"{prefix}.atrees")
     return inferred_anc_ts
 
@@ -117,12 +114,11 @@ def match_samples(samples_fn, inferred_anc_ts, num_threads, r_prob, m_prob, pref
     )
     ts_path = f"{prefix}.no_simplify.trees"
     inferred_ts.dump(ts_path)
-    return inferred_ts
 
 
 def reinfer_after_dating(samples_fn, dated_trees):
     """Reinfer trees after adding dates using tsdate.py
-    
+
     follows the example : https://github.com/tskit-dev/tsdate/issues/191
 
     Parameters
@@ -138,20 +134,19 @@ def reinfer_after_dating(samples_fn, dated_trees):
         _description_
     """
     dated = tskit.load(f"{dated_trees}.dated.trees").simplify()
-    sites_time = tsdate.sites_time_from_ts(dated) 
-    dated_samples = tsdate.add_sampledata_times(samples_fn, sites_time)   
-    return dated_samples
+    sites_time = tsdate.sites_time_from_ts(dated)
+    return tsdate.add_sampledata_times(samples_fn, sites_time)
 
 
 def parse_args(args_in):
     """Parse args."""
-    versions = f"tskit version: {tskit.__version__}, tsinfer version: {tsinfer.__version__}"    
+    versions = f"tskit version: {tskit.__version__}, tsinfer version: {tsinfer.__version__}"
     prog = argparse.ArgumentDefaultsHelpFormatter
-    parser = argparse.ArgumentParser(description="", 
+    parser = argparse.ArgumentParser(description="",
                                      prog=sys.argv[0],
-                                     formatter_class=prog)  
+                                     formatter_class=prog)
     parser.add_argument("--verbosity", "-v", action="count", default=0)
-    parser.add_argument("samples", 
+    parser.add_argument("samples",
                         help="The samples file name, as saved by tsinfer.SampleData.initialise()")
     parser.add_argument("prefix", help="The prefix of the output filename")
     parser.add_argument("-t", "--threads", default=1, type=int,
@@ -198,19 +193,19 @@ def main():
             num_threads=threads,
             prefix=prefix)
         inferred_anc_ts = match_ancestors(
-            samples_fn=samples, 
-            anc=anc, 
-            num_threads=threads, 
-            r_prob=recombination_rate, 
+            samples_fn=samples,
+            anc=anc,
+            num_threads=threads,
+            r_prob=recombination_rate,
             m_prob=mismatch_ma,
             prefix=prefix
             )
         match_samples(
-            samples_fn=samples, 
-            inferred_anc_ts=inferred_anc_ts, 
-            num_threads=threads, 
-            r_prob=recombination_rate, 
-            m_prob=mismatch_ms, 
+            samples_fn=samples,
+            inferred_anc_ts=inferred_anc_ts,
+            num_threads=threads,
+            r_prob=recombination_rate,
+            m_prob=mismatch_ms,
             prefix=prefix)
 
     if args.step == "GA":
@@ -221,10 +216,10 @@ def main():
     if args.step == "MA":
         anc = tsinfer.load(f"{args.prefix}.truncated.ancestors")
         inferred_anc_ts = match_ancestors(
-            samples_fn=samples, 
-            anc=anc, 
-            num_threads=threads, 
-            r_prob=recombination_rate, 
+            samples_fn=samples,
+            anc=anc,
+            num_threads=threads,
+            r_prob=recombination_rate,
             m_prob=mismatch_ma,
             prefix=prefix
             )
@@ -232,11 +227,11 @@ def main():
         anc = tsinfer.load(f"{args.prefix}.truncated.ancestors")
         inferred_anc_ts = tskit.load(f"{prefix}.atrees")
         match_samples(
-            samples_fn=samples, 
-            inferred_anc_ts=inferred_anc_ts, 
-            num_threads=threads, 
-            r_prob=recombination_rate, 
-            m_prob=mismatch_ms, 
+            samples_fn=samples,
+            inferred_anc_ts=inferred_anc_ts,
+            num_threads=threads,
+            r_prob=recombination_rate,
+            m_prob=mismatch_ms,
             prefix=prefix)
 
 
