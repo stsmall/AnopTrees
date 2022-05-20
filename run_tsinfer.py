@@ -35,8 +35,8 @@ def match_ancestors(samples_fn, anc, num_threads, precision, r_prob, m_prob, pre
         sample_data,
         anc,
         num_threads=num_threads,
-        recombination=r_prob,
-        mismatch=m_prob,
+        recombination_rate=r_prob,
+        mismatch_ratio=m_prob,
         progress_monitor=True,
     )
     # precision=precision,
@@ -50,8 +50,8 @@ def match_samples(samples_fn, inferred_anc_ts, num_threads, r_prob, m_prob, prec
         sample_data,
         inferred_anc_ts,
         num_threads=num_threads,
-        recombination=r_prob,
-        mismatch=m_prob,
+        recombination_rate=r_prob,
+        mismatch_ratio=m_prob,
         progress_monitor=True,
         simplify=False,
     )
