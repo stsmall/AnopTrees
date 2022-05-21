@@ -156,8 +156,8 @@ def parse_args(args_in):
                         "generate ancestors (GA), match ancestors"
                         "(MA), or match samples (MS) or all three (infer)")
     parser.add_argument("--recombination_rate", type=float, default=1e-8, help="")
-    parser.add_argument("--mismatch_ma", default=1, help="")
-    parser.add_argument("--mismatch_ms", default=1, help="")
+    parser.add_argument("--mismatch_ma", type=float, default=1, help="")
+    parser.add_argument("--mismatch_ms", type=float, default=1, help="")
     parser.add_argument("--reinfer", action="store_true", help="reinfer on a dated tree")
     parser.add_argument("-V", "--version", action="version", version=versions)
     return parser.parse_args(args_in)
