@@ -32,7 +32,7 @@ import tsinfer
 # https://github.com/tskit-dev/tsinfer/issues/277#issuecomment-652024871
 
 
-def add_metadata(vcf, samples, meta, label_by):
+def add_metadata(vcf, samples, meta, label_by: str):
     """Add tsinfer meta data.
 
     Parameters
@@ -61,7 +61,7 @@ def add_metadata(vcf, samples, meta, label_by):
         samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
 
 
-def add_diploid_sites(vcf, samples):
+def add_diploid_sites(vcf, samples, chunk_size: int):
     """Read the sites in the vcf and add them to the samples object.
 
     Reordering the alleles to put the ancestral allele first,
@@ -84,27 +84,34 @@ def add_diploid_sites(vcf, samples):
     None.
 
     """
+    chunk_size
     with open("missing_data.txt", 'w') as f:
         progressbar = tqdm.tqdm(total=samples.sequence_length, desc="Read VCF", unit='bp')
         pos = 0
         for variant in vcf:
             progressbar.update(variant.POS - pos)
+            # quality checks
             if pos == variant.POS:
                 raise ValueError("Duplicate positions for variant at position", pos)
             else:
                 pos = variant.POS
+            # must be phased
             if any(not phased for _, _, phased in variant.genotypes):  # was ([TEXT]]
                 raise ValueError("Unphased genotypes for variant at position", pos)
+            # reordering around Ancestral
             alleles = [variant.REF] + variant.ALT
             ancestral = variant.INFO.get('AA', variant.REF)
             ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
             allele_index = {old_index: ordered_alleles.index(allele) for old_index,
                             allele in enumerate(alleles)}
+            # genotypes
             genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
+            # handle missing genotypes
             missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
             for i in missing_genos:
                 genotypes[i] = tskit.MISSING_DATA
                 f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
+            # add site
             samples.add_site(pos, genotypes=genotypes, alleles=ordered_alleles)
         progressbar.close()
 
@@ -126,7 +133,8 @@ def parse_args(args_in):
                         "Columns must include sample_id")
     parser.add_argument('-t', "--threads", type=int, default=1)
     parser.add_argument("--pops_header", type=str, default="country")
-
+    parser.add_argument("--chunk_size", type=int, default="number of snps per chunk,"
+                        "not counting singletons")
     return parser.parse_args(args_in)
 
 
@@ -140,19 +148,25 @@ def main():
     outfile = args.outfile
     threads = args.threads
     label_by = args.pops_header
+    chunks = args.chunk_size
     meta = pd.read_csv(args.meta, sep=",", index_col="sample_id", dtype=object)
     # =========================================================================
     #  Main executions
     # =========================================================================
 
     vcf = cyvcf2.VCF(vcf_path)
+    import ipdb; ipdb.set_trace()
     with tsinfer.SampleData(path=f"{outfile}.samples", sequence_length=chrom_len(vcf),
                             num_flush_threads=threads) as samples:
         add_metadata(vcf, samples, meta, label_by)
-        add_diploid_sites(vcf, samples)
+        add_diploid_sites(vcf=vcf, samples=samples, chunk_size=chunks)
 
     print(f"Sample file created for {samples.num_samples} samples ({samples.num_individuals}) with {samples.num_sites} variable sites.", flush=True)
 
 
 if __name__ == "__main__":
     main()
+
+# sequence_length, adjust for chunks
+# vcf.aelle_freq?
+# doubleton?
