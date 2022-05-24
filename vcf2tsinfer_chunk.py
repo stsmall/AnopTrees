@@ -216,8 +216,7 @@ def parse_args(args_in):
                         help="metadata for names and populations."
                         "Columns must include sample_id")
     parser.add_argument("--gff", required=True, type=str,
-                        help="metadata for positions."
-                        "Columns must include position")
+                        help="metadata for positions.")
     parser.add_argument('-t', "--threads", type=int, default=1)
     parser.add_argument("--pops_header", type=str, default="country")
     parser.add_argument("--chunk_size", type=int, default=100000,
@@ -237,7 +236,7 @@ def main():
     label_by = args.pops_header
     chunks = args.chunk_size
     meta = pd.read_csv(args.meta, sep=",", index_col="sample_id", dtype=object)
-    gff = pd.read_csv(args.gff, sep=",", index_col="position", dtype=object)    
+    gff = pd.read_csv(args.gff, sep=",", dtype=object)    
     # =========================================================================
     #  Main executions
     # =========================================================================
