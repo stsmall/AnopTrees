@@ -100,7 +100,7 @@ def add_meta_site(gff, chrom: str, pos: int):
     pos : int
         _description_
     """
-    gf_part = gff.query("type != chromosome")
+    gf_part = gff.query("type != 'chromosome'")
     gf_part = gf_part.query(f"contig == '{chrom}'")
     gf_part = gf_part.query(f"start <= '{pos}'")
     gf_part = gf_part.query(f"end >= '{pos}'")
