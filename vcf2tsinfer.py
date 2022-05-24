@@ -28,9 +28,6 @@ import tqdm
 import tskit
 import tsinfer
 
-# TODO: allow parallel loading of large VCFs
-# https://github.com/tskit-dev/tsinfer/issues/277#issuecomment-652024871
-
 
 def add_metadata(vcf, samples, meta, label_by: str):
     """Add tsinfer meta data.
@@ -61,7 +58,7 @@ def add_metadata(vcf, samples, meta, label_by: str):
         samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
 
 
-def add_diploid_sites(vcf, samples, chunk_size: int):
+def add_diploid_sites(vcf, samples):
     """Read the sites in the vcf and add them to the samples object.
 
     Reordering the alleles to put the ancestral allele first,
@@ -84,7 +81,6 @@ def add_diploid_sites(vcf, samples, chunk_size: int):
     None.
 
     """
-    chunk_size
     with open("missing_data.txt", 'w') as f:
         progressbar = tqdm.tqdm(total=samples.sequence_length, desc="Read VCF", unit='bp')
         pos = 0
@@ -133,8 +129,6 @@ def parse_args(args_in):
                         "Columns must include sample_id")
     parser.add_argument('-t', "--threads", type=int, default=1)
     parser.add_argument("--pops_header", type=str, default="country")
-    parser.add_argument("--chunk_size", type=int, default="number of snps per chunk,"
-                        "not counting singletons")
     return parser.parse_args(args_in)
 
 
@@ -148,25 +142,18 @@ def main():
     outfile = args.outfile
     threads = args.threads
     label_by = args.pops_header
-    chunks = args.chunk_size
     meta = pd.read_csv(args.meta, sep=",", index_col="sample_id", dtype=object)
     # =========================================================================
     #  Main executions
     # =========================================================================
-
     vcf = cyvcf2.VCF(vcf_path)
-    import ipdb; ipdb.set_trace()
     with tsinfer.SampleData(path=f"{outfile}.samples", sequence_length=chrom_len(vcf),
                             num_flush_threads=threads) as samples:
         add_metadata(vcf, samples, meta, label_by)
-        add_diploid_sites(vcf=vcf, samples=samples, chunk_size=chunks)
+        add_diploid_sites(vcf=vcf, samples=samples)
 
     print(f"Sample file created for {samples.num_samples} samples ({samples.num_individuals}) with {samples.num_sites} variable sites.", flush=True)
 
 
 if __name__ == "__main__":
     main()
-
-# sequence_length, adjust for chunks
-# vcf.aelle_freq?
-# doubleton?
