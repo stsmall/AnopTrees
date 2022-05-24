@@ -164,29 +164,30 @@ def add_diploid_sites(vcf,
             ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
             allele_index = {old_index: ordered_alleles.index(allele) for old_index,
                             allele in enumerate(alleles)}
+            # should we use site for inference?
+            # inference == False; triallelic: if len(ordered_alleles) > 2
+            # inference == False; bad ancestral: AAProb in ['maje', 'majn', 'majm']
+            inference = len(ordered_alleles) <= 2 and ancestral_prob not in ['maje', 'majn', 'majm']
             # genotypes
             genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
-            # singleton/doubleton dont count in tsinfer
+            # singleton/doubleton dont count in tsinfer, dont count towards chunk
             if sum(genotypes) > 2:
-                chunk_count += 1  # dont count singletons towards chunk
+                chunk_count += 1
             elif sum(genotypes) == 2:
                 if all(np.sum(np.array([genotypes[::2], genotypes[1::2]]), axis=0) != 2):
                     chunk_count += 1
             # handle missing genotypes
             missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
             if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
-                continue
+                inference = False
             for i in missing_genos:
                 genotypes[i] = tskit.MISSING_DATA
                 f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
-            # should we use site for inference?
-            # inference == False; triallelic: if len(ordered_alleles) > 2
-            # inference == False; bad ancestral: AAProb in ['maje', 'majn', 'majm']
-            inference = len(ordered_alleles) <= 2 and ancestral_prob not in ['maje', 'majn', 'majm']
-            if not inference:
-                t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
             # add meta data to site from gff
             meta_pos = add_meta_site(meta_gff, variant.CHROM, pos)
+            # mark uninferred sites
+            if not inference:
+                t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
             # add sites
             sample_data.add_site(pos, genotypes=genotypes, 
                                  alleles=ordered_alleles,

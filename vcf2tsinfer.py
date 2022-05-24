@@ -1,7 +1,7 @@
 # -*-coding:utf-8 -*-
 """
-@File    :  vcf2tsinfer.py
-@Time    :  2022/05/19 09:20:25
+@File    :  vcf2tsinfer_chunk.py
+@Time    :  2022/05/23 09:20:25
 @Author  :  Scott T Small
 @Version :  1.0
 @Contact :  stsmall@gmail.com
@@ -14,8 +14,8 @@
             max_file_size=2**37 that seems to fix this.
             https://tsinfer.readthedocs.io/en/latest/api.html#file-formats
             python -m pip install git+https://github.com/tskit-dev/tsinfer
-@Usage   :  python vcf2tsinfer.py --vcf chr2L.recode.vcf --outfile chr2L \
-            --meta FILE.meta.csv -t 2 --pops_header country &&
+@Usage   :  python vcf2tsinfer_chunk.py --vcf chr2L.recode.vcf --outfile chr2L \
+            --meta FILE.meta.csv -t 2 --pops_header country --chunk_size 100000 &&
             tsinfer infer chr2L.samples -o -t 30
 """
 
@@ -23,30 +23,26 @@ import argparse
 import sys
 
 import cyvcf2
+import numpy as np
 import pandas as pd
 import tqdm
 import tskit
 import tsinfer
-
+#TODO: vcf.set_samples(["AG1", AG2])
 
 def add_metadata(vcf, samples, meta, label_by: str):
-    """Add tsinfer meta data.
+    """_summary_
 
     Parameters
     ----------
-    vcf : TYPE
-        DESCRIPTION.
-    samples : TYPE
-        DESCRIPTION.
-    meta : TYPE
-        DESCRIPTION.
-    label_by : TYPE, optional
-        DESCRIPTION. The default is country.
-
-    Returns
-    -------
-    None.
-
+    vcf : _type_
+        _description_
+    samples : _type_
+        _description_
+    meta : _type_
+        _description_
+    label_by : str
+        _description_
     """
     pop_lookup = {}
     pop_lookup = {pop: samples.add_population(metadata={label_by: pop}) for pop in meta[label_by].unique()}
@@ -58,35 +54,99 @@ def add_metadata(vcf, samples, meta, label_by: str):
         samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
 
 
-def add_diploid_sites(vcf, samples):
-    """Read the sites in the vcf and add them to the samples object.
-
-    Reordering the alleles to put the ancestral allele first,
-    if it is available.
+def create_sample_data(vcf, 
+                       meta, 
+                       label_by: str, 
+                       outfile: str, 
+                       threads: int 
+                       ):
+    """_summary_
 
     Parameters
     ----------
-    vcf : TYPE
-        DESCRIPTION.
-    samples : TYPE
-        DESCRIPTION.
+    vcf : _type_
+        _description_
+    meta : _type_
+        _description_
+    label_by : str
+        _description_
+    outfile : str
+        _description_
+    threads : int
+        _description_
+    file_its : int
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    sample_data = tsinfer.SampleData(path=f"{outfile}.samples", num_flush_threads=threads)
+    add_metadata(vcf, sample_data, meta, label_by)
+    return sample_data
+
+
+def add_meta_site(gff, chrom: str, pos: int):
+    """_summary_
+
+    Parameters
+    ----------
+    gff : _type_
+        _description_
+    chrom : str
+        _description_
+    pos : int
+        _description_
+    """
+    gf_part = gff.query("type != chromosome")
+    gf_part = gf_part.query(f"contig == '{chrom}'")
+    gf_part = gf_part.query(f"start <= '{pos}'")
+    gf_part = gf_part.query(f"end >= '{pos}'")
+    return gf_part.to_dict()
+
+
+def add_diploid_sites(vcf,
+                      meta, 
+                      meta_gff, 
+                      threads: int, 
+                      outfile: str, 
+                      label_by: str
+                      ):
+    """_summary_
+
+    Parameters
+    ----------
+    vcf : _type_
+        _description_
+    meta : _type_
+        _description_
+    threads : int
+        _description_
+    outfile : str
+        _description_
+    label_by : str
+        _description_
+    chunk_size : int
+        _description_
 
     Raises
     ------
     ValueError
-        DESCRIPTION.
-
-    Returns
-    -------
-    None.
-
+        _description_
+    ValueError
+        _description_
     """
-    with open("missing_data.txt", 'w') as f:
-        progressbar = tqdm.tqdm(total=samples.sequence_length, desc="Read VCF", unit='bp')
+    sample_data = create_sample_data(vcf, meta, label_by, outfile, threads)
+    chrom = vcf.seqnames
+    t = open(f"{chrom}.not_inferred.txt", 'w')
+    with open(f"{chrom}.missing_data.txt", 'w') as f:
+        progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
         pos = 0
         for variant in vcf:
             progressbar.update(variant.POS - pos)
             # quality checks
+            assert variant.CHROM == vcf.seqnames
             if pos == variant.POS:
                 raise ValueError("Duplicate positions for variant at position", pos)
             else:
@@ -96,26 +156,37 @@ def add_diploid_sites(vcf, samples):
                 raise ValueError("Unphased genotypes for variant at position", pos)
             # reordering around Ancestral
             alleles = [variant.REF] + variant.ALT
-            ancestral = variant.INFO.get('AA', variant.REF)
+            ancestral = variant.INFO.get('AA')
+            ancestral_prob = variant.INFO.get('AAProb')
             ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
             allele_index = {old_index: ordered_alleles.index(allele) for old_index,
                             allele in enumerate(alleles)}
+            # should we use site for inference?
+            # inference == False; triallelic: if len(ordered_alleles) > 2
+            # inference == False; bad ancestral: AAProb in ['maje', 'majn', 'majm']
+            inference = len(ordered_alleles) <= 2 and ancestral_prob not in ['maje', 'majn', 'majm']
             # genotypes
             genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
             # handle missing genotypes
             missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
+            if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
+                inference = False
             for i in missing_genos:
                 genotypes[i] = tskit.MISSING_DATA
                 f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
-            # add site
-            samples.add_site(pos, genotypes=genotypes, alleles=ordered_alleles)
+            # add meta data to site from gff
+            meta_pos = add_meta_site(meta_gff, variant.CHROM, pos)
+            # mark uninferred sites
+            if not inference:
+                t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
+            # add sites
+            sample_data.add_site(pos, genotypes=genotypes, 
+                                 alleles=ordered_alleles,
+                                 metadata=meta_pos, 
+                                 inference=inference)
         progressbar.close()
-
-
-def chrom_len(vcf):
-    """Get chromosome length."""
-    assert len(vcf.seqlens) == 1
-    return vcf.seqlens[0]
+        sample_data.finalise()
+    t.close()
 
 
 def parse_args(args_in):
@@ -127,6 +198,9 @@ def parse_args(args_in):
     parser.add_argument("--meta", required=True, type=str,
                         help="metadata for names and populations."
                         "Columns must include sample_id")
+    parser.add_argument("--gff", required=True, type=str,
+                        help="metadata for positions."
+                        "Columns must include position")
     parser.add_argument('-t', "--threads", type=int, default=1)
     parser.add_argument("--pops_header", type=str, default="country")
     return parser.parse_args(args_in)
@@ -143,17 +217,17 @@ def main():
     threads = args.threads
     label_by = args.pops_header
     meta = pd.read_csv(args.meta, sep=",", index_col="sample_id", dtype=object)
+    gff = pd.read_csv(args.gff, sep=",", dtype=object)    
     # =========================================================================
     #  Main executions
     # =========================================================================
     vcf = cyvcf2.VCF(vcf_path)
-    with tsinfer.SampleData(path=f"{outfile}.samples", sequence_length=chrom_len(vcf),
-                            num_flush_threads=threads) as samples:
-        add_metadata(vcf, samples, meta, label_by)
-        add_diploid_sites(vcf=vcf, samples=samples)
-
-    print(f"Sample file created for {samples.num_samples} samples ({samples.num_individuals}) with {samples.num_sites} variable sites.", flush=True)
-
+    add_diploid_sites(vcf=vcf,
+                      meta=meta,
+                      meta_gff=gff,
+                      threads=threads,
+                      outfile=outfile,
+                      label_by=label_by)
 
 if __name__ == "__main__":
     main()
