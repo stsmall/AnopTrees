@@ -147,7 +147,7 @@ def add_diploid_sites(vcf,
         progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
         pos = 0
         for variant in vcf:
-            assert variant.CHROM == vcf.seqnames
+            assert variant.CHROM == vcf.seqnames[0]
             progressbar.update(variant.POS - pos)
             # quality checks
             if pos == variant.POS:
