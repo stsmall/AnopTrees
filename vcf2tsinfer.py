@@ -139,6 +139,7 @@ def add_diploid_sites(vcf,
     """
     sample_data = create_sample_data(vcf, meta, label_by, outfile, threads)
     chrom = vcf.seqnames
+    exclude_ls = []  # no longer skip inference but exclude site
     t = open(f"{chrom}.not_inferred.txt", 'w')
     with open(f"{chrom}.missing_data.txt", 'w') as f:
         progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
@@ -174,19 +175,21 @@ def add_diploid_sites(vcf,
             for i in missing_genos:
                 genotypes[i] = tskit.MISSING_DATA
                 f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
-            # add meta data to site from gff
-            meta_pos = add_meta_site(meta_gff, variant.CHROM, pos)
             # mark uninferred sites
             if not inference:
+                exclude_ls.append(pos)
                 t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
+            # add meta data to site from gff
+            meta_pos = add_meta_site(meta_gff, variant.CHROM, pos)
             # add sites
             sample_data.add_site(pos, genotypes=genotypes, 
                                  alleles=ordered_alleles,
                                  metadata=meta_pos, 
-                                 inference=inference)
+                                )
         progressbar.close()
         sample_data.finalise()
     t.close()
+    np.savetxt(f"{chrom}.exclude-pos.txt", np.array(exclude_ls))
 
 
 def parse_args(args_in):

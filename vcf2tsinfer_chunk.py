@@ -138,72 +138,76 @@ def add_diploid_sites(vcf,
     ValueError
         _description_
     """
+    exclude_ls = []
     file_its = 0
     chunk_count = 0
     sample_data = create_sample_data(vcf, meta, label_by, outfile, threads, file_its)
     chrom = vcf.seqnames
-    t = open(f"{chrom}.not_inferred.txt", 'w')
-    with open(f"{chrom}.missing_data.txt", 'w') as f:
-        progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
-        pos = 0
-        for variant in vcf:
-            assert variant.CHROM == vcf.seqnames[0]
-            progressbar.update(variant.POS - pos)
-            # quality checks
-            if pos == variant.POS:
-                raise ValueError("Duplicate positions for variant at position", pos)
-            else:
-                pos = variant.POS
-            # must be phased
-            if any(not phased for _, _, phased in variant.genotypes):  # was ([TEXT]]
-                raise ValueError("Unphased genotypes for variant at position", pos)
-            # reordering around Ancestral
-            alleles = [variant.REF] + variant.ALT
-            ancestral = variant.INFO.get('AA')
-            ancestral_prob = variant.INFO.get('AAProb')
-            ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
-            allele_index = {old_index: ordered_alleles.index(allele) for old_index,
-                            allele in enumerate(alleles)}
-            # should we use site for inference?
-            # inference == False; triallelic: if len(ordered_alleles) > 2
-            # inference == False; bad ancestral: AAProb in ['maje', 'majn', 'majm']
-            inference = len(ordered_alleles) <= 2 and ancestral_prob not in ['maje', 'majn', 'majm']
-            # genotypes
-            genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
-            # singleton/doubleton dont count in tsinfer, dont count towards chunk
-            if sum(genotypes) > 2:
-                chunk_count += 1
-            elif sum(genotypes) == 2:
-                if all(np.sum(np.array([genotypes[::2], genotypes[1::2]]), axis=0) != 2):
+    with open(f"{chrom}.not_inferred.txt", 'w') as t:
+        with open(f"{chrom}.missing_data.txt", 'w') as f:
+            progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
+            pos = 0
+            for variant in vcf:
+                assert variant.CHROM == vcf.seqnames[0]
+                progressbar.update(variant.POS - pos)
+                # quality checks
+                if pos == variant.POS:
+                    raise ValueError("Duplicate positions for variant at position", pos)
+                else:
+                    pos = variant.POS
+                # must be phased
+                if any(not phased for _, _, phased in variant.genotypes):  # was ([TEXT]]
+                    raise ValueError("Unphased genotypes for variant at position", pos)
+                # reordering around Ancestral
+                alleles = [variant.REF] + variant.ALT
+                ancestral = variant.INFO.get('AA')
+                ancestral_prob = variant.INFO.get('AAProb')
+                ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
+                allele_index = {old_index: ordered_alleles.index(allele) for old_index,
+                                allele in enumerate(alleles)}
+                # should we use site for inference?
+                # inference == False; triallelic: if len(ordered_alleles) > 2
+                # inference == False; bad ancestral: AAProb in ['maje', 'majn', 'majm']
+                inference = len(ordered_alleles) <= 2 and ancestral_prob not in ['maje', 'majn', 'majm']
+                # genotypes
+                genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
+                # singleton/doubleton dont count in tsinfer, dont count towards chunk
+                if sum(genotypes) > 2:
                     chunk_count += 1
-            # handle missing genotypes
-            missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
-            if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
-                inference = False
-            for i in missing_genos:
-                genotypes[i] = tskit.MISSING_DATA
-                f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
-            # add meta data to site from gff
-            meta_pos = add_meta_site(meta_gff, variant.CHROM, pos)
-            # mark uninferred sites
-            if not inference:
-                t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
-            # add sites
-            sample_data.add_site(pos, genotypes=genotypes, 
-                                 alleles=ordered_alleles,
-                                 metadata=meta_pos, 
-                                 inference=inference)
-            # check file size
-            if chunk_count >= chunk_size:
-                sample_data.finalise()
-                file_its += 1
-                sample_data = create_sample_data(vcf, meta, label_by, outfile, threads, file_its)
-                chunk_count = 0
-        progressbar.close()
+                elif sum(genotypes) == 2:
+                    if all(np.sum(np.array([genotypes[::2], genotypes[1::2]]), axis=0) != 2):
+                        chunk_count += 1
+                # handle missing genotypes
+                missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
+                if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
+                    inference = False
+                for i in missing_genos:
+                    genotypes[i] = tskit.MISSING_DATA
+                    f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
+                # mark uninferred sites
+                if not inference:
+                    exclude_ls.append(pos)
+                    t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
+                # add meta data to site from gff
+                meta_pos = add_meta_site(meta_gff, variant.CHROM, pos)
+                # add sites
+                sample_data.add_site(pos, genotypes=genotypes, 
+                                    alleles=ordered_alleles,
+                                    metadata=meta_pos, 
+                                    inference=inference)
+                # check file size
+                if chunk_count >= chunk_size:
+                    sample_data.finalise()
+                    file_its += 1
+                    sample_data = create_sample_data(vcf, meta, label_by, outfile, threads, file_its)
+                    chunk_count = 0
+            progressbar.close()
+    # catch final chunk
     if 0 < chunk_count < chunk_size:
         print("final sample, has {chunk_count} snps")
         sample_data.finalise()
-    t.close()
+    # save excluded position for use w/ generate ancestors
+    np.savetxt(f"ga.{chrom}.exclude-pos.txt", np.array(exclude_ls))
 
 
 def parse_args(args_in):
