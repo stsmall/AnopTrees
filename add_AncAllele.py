@@ -78,7 +78,10 @@ def add_aa(est_dt, vcf_infile):
                         counts = list(map(int, anc[1].split(",")))
                         # num_alleles = counts.count(0)
                         min_ix, max_ix = sorted(counts)[-2:]
-                        assert bases[counts.index(max_ix)] == maj
+                        try:
+                            assert bases[counts.index(max_ix)] == maj
+                        except AssertionError:
+                            import ipdb; ipdb.set_trace()
                         minor = bases[counts.index(min_ix)]
                         prob = float(anc[2])
                         if prob >= 0.50:
