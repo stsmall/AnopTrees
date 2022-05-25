@@ -139,57 +139,56 @@ def add_diploid_sites(vcf,
     """
     sample_data = create_sample_data(vcf, meta, label_by, outfile, threads)
     chrom = vcf.seqnames[0]
+    print(chrom)
     exclude_ls = []  # no longer skip inference but exclude site
-    t = open(f"{chrom}.not_inferred.txt", 'w')
-    with open(f"{chrom}.missing_data.txt", 'w') as f:
-        progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
-        pos = 0
-        for variant in vcf:
-            progressbar.update(variant.POS - pos)
-            # quality checks
-            assert variant.CHROM == vcf.seqnames[0]
-            if pos == variant.POS:
-                raise ValueError("Duplicate positions for variant at position", pos)
-            else:
-                pos = variant.POS
-            # must be phased
-            if any(not phased for _, _, phased in variant.genotypes):  # was ([TEXT]]
-                raise ValueError("Unphased genotypes for variant at position", pos)
-            # reordering around Ancestral
-            alleles = [variant.REF] + variant.ALT
-            ancestral = variant.INFO.get('AA')
-            ancestral_prob = variant.INFO.get('AAProb')
-            ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
-            allele_index = {old_index: ordered_alleles.index(allele) for old_index,
-                            allele in enumerate(alleles)}
-            # should we use site for inference?
-            # inference == False; triallelic: if len(ordered_alleles) > 2
-            # inference == False; bad ancestral: AAProb in ['maje', 'majn', 'majm']
-            inference = len(ordered_alleles) <= 2 and ancestral_prob not in ['maje', 'majn', 'majm']
-            # genotypes
-            genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
-            # handle missing genotypes
-            missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
-            if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
-                inference = False
-            for i in missing_genos:
-                genotypes[i] = tskit.MISSING_DATA
-                f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
-            # mark uninferred sites
-            if not inference:
-                exclude_ls.append(pos)
-                t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
-            # add meta data to site from gff
-            if meta_pos:
-                meta_pos = add_meta_site(meta_gff, variant.CHROM, pos)
-            # add sites
-            sample_data.add_site(pos, genotypes=genotypes,
-                                 alleles=ordered_alleles,
-                                 metadata=meta_pos,
-                                )
-        progressbar.close()
-        sample_data.finalise()
-    t.close()
+    with open(f"{chrom}.not_inferred.txt", 'w') as t:
+        with open(f"{chrom}.missing_data.txt", 'w') as f:
+            progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
+            pos = 0
+            for variant in vcf:
+                progressbar.update(variant.POS - pos)
+                # quality checks
+                assert variant.CHROM == chrom
+                if pos == variant.POS:
+                    raise ValueError("Duplicate positions for variant at position", pos)
+                else:
+                    pos = variant.POS
+                # must be phased
+                if any(not phased for _, _, phased in variant.genotypes):  # was ([TEXT]]
+                    raise ValueError("Unphased genotypes for variant at position", pos)
+                # reordering around Ancestral
+                alleles = [variant.REF] + variant.ALT
+                ancestral = variant.INFO.get('AA')
+                ancestral_prob = variant.INFO.get('AAProb')
+                ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
+                allele_index = {old_index: ordered_alleles.index(allele) for old_index,
+                                allele in enumerate(alleles)}
+                # should we use site for inference?
+                # inference == False; triallelic: if len(ordered_alleles) > 2
+                # inference == False; bad ancestral: AAProb in ['maje', 'majn', 'majm']
+                inference = len(ordered_alleles) <= 2 and ancestral_prob not in ['maje', 'majn', 'majm']
+                # genotypes
+                genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
+                # handle missing genotypes
+                missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
+                if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
+                    inference = False
+                for i in missing_genos:
+                    genotypes[i] = tskit.MISSING_DATA
+                    f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
+                # mark uninferred sites
+                if not inference:
+                    exclude_ls.append(pos)
+                    t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
+                # add meta data to site from gff
+                meta_pos = add_meta_site(meta_gff, variant.CHROM, pos) if meta_gff else None
+                # add sites
+                sample_data.add_site(pos, genotypes=genotypes,
+                                    alleles=ordered_alleles,
+                                    metadata=meta_pos,
+                                    )
+            progressbar.close()
+            sample_data.finalise()
     np.savetxt(f"{chrom}.exclude-pos.txt", np.array(exclude_ls))
 
 

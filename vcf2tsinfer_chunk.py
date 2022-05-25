@@ -148,7 +148,7 @@ def add_diploid_sites(vcf,
             progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
             pos = 0
             for variant in vcf:
-                assert variant.CHROM == vcf.seqnames[0]
+                assert variant.CHROM == chrom
                 progressbar.update(variant.POS - pos)
                 # quality checks
                 if pos == variant.POS:
@@ -189,13 +189,12 @@ def add_diploid_sites(vcf,
                     exclude_ls.append(pos)
                     t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
                 # add meta data to site from gff
-                meta_pos = add_meta_site(meta_gff, variant.CHROM, pos)
+                meta_pos = add_meta_site(meta_gff, variant.CHROM, pos) if meta_gff else None
                 # add sites
                 sample_data.add_site(pos, genotypes=genotypes, 
                                     alleles=ordered_alleles,
-                                    metadata=meta_pos, 
-                                    inference=inference)
-                # check file size
+                                    metadata=meta_pos
+                                    )               # check file size
                 if chunk_count >= chunk_size:
                     sample_data.finalise()
                     file_its += 1
