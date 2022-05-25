@@ -82,7 +82,7 @@ def add_aa(est_dt, vcf_infile):
                         minor = bases[counts.index(min_ix)]
                         prob = float(anc[2])
                         if prob >= 0.50:
-                            AA, AAprob = [maj, prob]
+                            AA, AAprob, AAcond = [maj, prob, "maj_anc"]
                         else:
                             aa_root = list(map(float, anc[3:]))
                             # check for ties
@@ -91,18 +91,21 @@ def add_aa(est_dt, vcf_infile):
                                 nb = node_bases[alt_ix]
                                 if nb[0] == nb[1]:
                                     if minor in nb:
-                                        p = f"{max(aa_root)}-min"
+                                        p = f"{max(aa_root)}"
+                                        cond = "min_anc"
                                         flipped += 1
                                     elif maj in nb:
                                         p = max(aa_root)
+                                        cond = "maj_anc"
                                     else:
-                                        p = f"{max(aa_root)}-not"
+                                        p = f"{max(aa_root)}"
                                         nomatch += 1
-                                    AA, AAprob = [nb[0], p]
+                                        cond = "not_seg_allele"
+                                    AA, AAprob, AAcond = [nb[0], p, cond]
                                 else:
-                                    AA, AAprob = [nb, f"{max(aa_root)}-dbl"]
+                                    AA, AAprob, AAcond = [nb, f"{max(aa_root)}","dbl_node"]
                             else:
-                                AA, AAprob = [maj, f"{max(aa_root)}-maj"]
+                                AA, AAprob, AAcond = [maj, f"{max(aa_root)}", "maj_default"]
                     except KeyError:
                         # count for major
                         calt = 0
@@ -112,11 +115,11 @@ def add_aa(est_dt, vcf_infile):
                             calt += gt.count('1')
                             cref += gt.count('0')
                         maj = ref if cref >= calt else alt
-                        AA, AAprob = [maj, "NA"]
+                        AA, AAprob, AAcond = [maj, 0.00, "not_inferred"]
                     if len(fields) == 1 and "." in fields:
-                        lin[7] = f"AA={AA};AAProb={AAprob}"
+                        lin[7] = f"AA={AA};AAProb={AAprob};AAcond={AAcond}"
                     else:
-                        fields.insert(0, f"AA={AA};AAProb={AAprob}")
+                        fields.insert(0, f"AA={AA};AAProb={AAprob};AAcond={AAcond}")
                         lin[7] = ";".join(fields)
                     f.write("{}\n".format("\t".join(lin)))
     print(f"{flipped} sites where anc is minor")

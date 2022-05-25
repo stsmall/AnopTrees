@@ -162,13 +162,14 @@ def add_diploid_sites(vcf,
                 alleles = [variant.REF] + variant.ALT
                 ancestral = variant.INFO.get('AA')
                 ancestral_prob = variant.INFO.get('AAProb')
+                ancestral_cond = variant.INFO.get('AAcond')
                 ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
                 allele_index = {old_index: ordered_alleles.index(allele) for old_index,
                                 allele in enumerate(alleles)}
                 # should we use site for inference?
                 # inference == False; triallelic: if len(ordered_alleles) > 2
                 # inference == False; bad ancestral: AAProb in ['not', 'dbl', 'NA'] maj
-                inference = len(ordered_alleles) <= 2 and ancestral_prob not in ['not', 'dbl', 'NA']
+                inference = len(ordered_alleles) <= 2 and ancestral_cond not in ['not_seg_allele', 'dbl_node', 'not_inferred', "maj_default"]
                 # genotypes
                 genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
                 # singleton/doubleton dont count in tsinfer, dont count towards chunk
