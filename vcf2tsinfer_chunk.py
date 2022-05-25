@@ -167,8 +167,8 @@ def add_diploid_sites(vcf,
                                 allele in enumerate(alleles)}
                 # should we use site for inference?
                 # inference == False; triallelic: if len(ordered_alleles) > 2
-                # inference == False; bad ancestral: AAProb in ['maje', 'majn', 'majm']
-                inference = len(ordered_alleles) <= 2 and ancestral_prob not in ['maje', 'majn', 'majm']
+                # inference == False; bad ancestral: AAProb in ['not', 'dbl', 'NA'] maj
+                inference = len(ordered_alleles) <= 2 and ancestral_prob not in ['not', 'dbl', 'NA']
                 # genotypes
                 genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
                 # singleton/doubleton dont count in tsinfer, dont count towards chunk
