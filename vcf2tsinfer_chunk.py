@@ -149,7 +149,7 @@ def add_diploid_sites(vcf,
             chunk_bar = tqdm.tqdm(total=chunk_size, desc=f"filling chunk {file_its}", unit='SNP', leave=False)
             pos = 0
             for variant in vcf:
-                print(f"chunk_count = {chunk_count")
+                print(f"chunk_count = {chunk_count}")
                 assert variant.CHROM == chrom
                 progressbar.update(variant.POS - pos)
                 chunk_bar.update(chunk_count)
