@@ -142,7 +142,7 @@ def add_diploid_sites(vcf,
     file_its = 0
     chunk_count = 0
     sample_data = create_sample_data(vcf, meta, label_by, outfile, threads, file_its)
-    chrom = vcf.seqnames
+    chrom = vcf.seqnames[0]
     with open(f"{chrom}.not_inferred.txt", 'w') as t:
         with open(f"{chrom}.missing_data.txt", 'w') as f:
             progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
