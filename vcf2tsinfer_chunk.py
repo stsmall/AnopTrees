@@ -151,7 +151,7 @@ def add_diploid_sites(vcf,
             for variant in vcf:
                 assert variant.CHROM == chrom
                 progressbar.update(variant.POS - pos)
-                chunk_bar.update(chunk_count)
+                chunk_bar.update(1)
                 # quality checks
                 if pos == variant.POS:
                     raise ValueError("Duplicate positions for variant at position", pos)
