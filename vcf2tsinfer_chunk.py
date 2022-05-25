@@ -151,7 +151,6 @@ def add_diploid_sites(vcf,
             for variant in vcf:
                 assert variant.CHROM == chrom
                 progressbar.update(variant.POS - pos)
-                chunk_bar.update(1)
                 # quality checks
                 if pos == variant.POS:
                     raise ValueError("Duplicate positions for variant at position", pos)
@@ -177,9 +176,11 @@ def add_diploid_sites(vcf,
                 # singleton/doubleton dont count in tsinfer, dont count towards chunk
                 if sum(genotypes) > 2:
                     chunk_count += 1
+                    chunk_bar.update(1)
                 elif sum(genotypes) == 2:
                     if all(np.sum(np.array([genotypes[::2], genotypes[1::2]]), axis=0) != 2):
                         chunk_count += 1
+                        chunk_bar.update(1)
                 # handle missing genotypes
                 missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
                 if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
