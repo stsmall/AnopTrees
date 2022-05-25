@@ -145,8 +145,8 @@ def add_diploid_sites(vcf,
     chrom = vcf.seqnames[0]
     with open(f"{chrom}.not_inferred.txt", 'w') as t:
         with open(f"{chrom}.missing_data.txt", 'w') as f:
-            progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
-            chunk_bar = tqdm.tqdm(total=chunk_size, desc=f"filling chunk {file_its}", unit='SNP', leave=False)
+            progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp', position=0)
+            chunk_bar = tqdm.tqdm(total=chunk_size, desc=f"filling chunk {file_its}", unit='SNP', position=1, leave=False)
             pos = 0
             for variant in vcf:
                 assert variant.CHROM == chrom
@@ -204,7 +204,7 @@ def add_diploid_sites(vcf,
                     sample_data = create_sample_data(vcf, meta, label_by, outfile, threads, file_its)
                     chunk_count = 0
                     chunk_bar.close()
-                    chunk_bar = tqdm.tqdm(total=chunk_size, desc=f"filling chunk {file_its}", unit='SNP', leave=False)
+                    chunk_bar = tqdm.tqdm(total=chunk_size, desc=f"filling chunk {file_its}", unit='SNP', postion=1, leave=False)
             progressbar.close()
     # catch final chunk
     if 0 < chunk_count < chunk_size:
