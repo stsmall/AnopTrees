@@ -54,11 +54,11 @@ def add_metadata(vcf, samples, meta, label_by: str):
         samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
 
 
-def create_sample_data(vcf, 
-                       meta, 
-                       label_by: str, 
-                       outfile: str, 
-                       threads: int 
+def create_sample_data(vcf,
+                       meta,
+                       label_by: str,
+                       outfile: str,
+                       threads: int
                        ):
     """_summary_
 
@@ -107,10 +107,10 @@ def add_meta_site(gff, chrom: str, pos: int):
 
 
 def add_diploid_sites(vcf,
-                      meta, 
-                      meta_gff, 
-                      threads: int, 
-                      outfile: str, 
+                      meta,
+                      meta_gff,
+                      threads: int,
+                      outfile: str,
                       label_by: str
                       ):
     """_summary_
@@ -180,11 +180,12 @@ def add_diploid_sites(vcf,
                 exclude_ls.append(pos)
                 t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
             # add meta data to site from gff
-            meta_pos = add_meta_site(meta_gff, variant.CHROM, pos)
+            if meta_pos:
+                meta_pos = add_meta_site(meta_gff, variant.CHROM, pos)
             # add sites
-            sample_data.add_site(pos, genotypes=genotypes, 
+            sample_data.add_site(pos, genotypes=genotypes,
                                  alleles=ordered_alleles,
-                                 metadata=meta_pos, 
+                                 metadata=meta_pos,
                                 )
         progressbar.close()
         sample_data.finalise()
@@ -201,7 +202,7 @@ def parse_args(args_in):
     parser.add_argument("--meta", required=True, type=str,
                         help="metadata for names and populations."
                         "Columns must include sample_id")
-    parser.add_argument("--gff", required=True, type=str,
+    parser.add_argument("--gff", type=str, default=None,
                         help="metadata for positions."
                         "Columns must include position")
     parser.add_argument('-t', "--threads", type=int, default=1)
@@ -220,7 +221,7 @@ def main():
     threads = args.threads
     label_by = args.pops_header
     meta = pd.read_csv(args.meta, sep=",", index_col="sample_id", dtype=object)
-    gff = pd.read_csv(args.gff, sep=",", dtype=object)    
+    gff = pd.read_csv(args.gff, sep=",", dtype=object) if args.gff else None
     # =========================================================================
     #  Main executions
     # =========================================================================
