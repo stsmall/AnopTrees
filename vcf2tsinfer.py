@@ -99,11 +99,8 @@ def add_meta_site(gff, pos: int):
     pos : int
         _description_
     """
-    #gf_part = gff.query(f"start <= '{pos}'")
-    #gf_part = gf_part.query(f"end >= '{pos}'")
-    gf_part = gff[gff[(gff["start"] <= pos) & (gff["end"] >= pos)]]
-    import ipdb; ipdb.set_trace()
-    return None if len(gf_part.index) == 0 else gf_part.to_dict('r')
+    gf_part = gff[(gff["start"] <= pos) & (gff["end"] >= pos)]
+    return None if len(gf_part.index) == 0 else gf_part.to_dict('records')[0]
 
 
 def add_diploid_sites(vcf,
