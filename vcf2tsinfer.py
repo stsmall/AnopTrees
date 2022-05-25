@@ -87,7 +87,7 @@ def create_sample_data(vcf,
     return sample_data
 
 
-def add_meta_site(gff, chrom: str, pos: int):
+def add_meta_site(gff, pos: int):
     """_summary_
 
     Parameters
@@ -99,10 +99,10 @@ def add_meta_site(gff, chrom: str, pos: int):
     pos : int
         _description_
     """
-    gf_part = gff.query("type != 'chromosome'")
-    gf_part = gf_part.query(f"contig == '{chrom}'")
-    gf_part = gf_part.query(f"start <= '{pos}'")
-    gf_part = gf_part.query(f"end >= '{pos}'")
+    import ipdb; ipdb.set_trace()
+    gf_part = gff[gff[(gff["start"] <= pos) & (gff["end"] >= pos)]]
+    #gf_part = gff.query(f"start <= '{pos}'")
+    #gf_part = gf_part.query(f"end >= '{pos}'")
     return gf_part.to_dict()
 
 
@@ -137,6 +137,7 @@ def add_diploid_sites(vcf,
     ValueError
         _description_
     """
+    meta_pos = None
     sample_data = create_sample_data(vcf, meta, label_by, outfile, threads)
     chrom = vcf.seqnames[0]
     print(chrom)
@@ -182,7 +183,8 @@ def add_diploid_sites(vcf,
                     exclude_ls.append(pos)
                     t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
                 # add meta data to site from gff
-                meta_pos = add_meta_site(meta_gff, variant.CHROM, pos) if meta_gff else None
+                if not meta_pos or not (meta_pos["start"] < pos < meta_pos["end"]):              
+                    meta_pos = add_meta_site(meta_gff, pos) if meta_gff else None
                 # add sites
                 sample_data.add_site(pos, genotypes=genotypes,
                                     alleles=ordered_alleles,
@@ -226,6 +228,10 @@ def main():
     #  Main executions
     # =========================================================================
     vcf = cyvcf2.VCF(vcf_path)
+    chrom = vcf.seqnames[0]
+    if gff:
+        gff = gff.query("type != 'chromosome'")
+        gff = gff.query(f"contig == '{chrom}'")
     add_diploid_sites(vcf=vcf,
                       meta=meta,
                       meta_gff=gff,

@@ -100,9 +100,7 @@ def add_meta_site(gff, chrom: str, pos: int):
     pos : int
         _description_
     """
-    gf_part = gff.query("type != 'chromosome'")
-    gf_part = gf_part.query(f"contig == '{chrom}'")
-    gf_part = gf_part.query(f"start <= '{pos}'")
+    gf_part = gff.query(f"start <= '{pos}'")
     gf_part = gf_part.query(f"end >= '{pos}'")
     return gf_part.to_dict()
 
@@ -251,6 +249,10 @@ def main():
     #  Main executions
     # =========================================================================
     vcf = cyvcf2.VCF(vcf_path)
+    chrom = vcf.seqnames[0]
+    if gff:
+        gff = gff.query("type != 'chromosome'")
+        gff = gff.query(f"contig == '{chrom}'")
     add_diploid_sites(vcf=vcf,
                       meta=meta,
                       meta_gff=gff,
