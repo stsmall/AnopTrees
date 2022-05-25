@@ -146,10 +146,12 @@ def add_diploid_sites(vcf,
     with open(f"{chrom}.not_inferred.txt", 'w') as t:
         with open(f"{chrom}.missing_data.txt", 'w') as f:
             progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
+            chunk_bar = tqdm.tqdm(total=chunk_size, desc=f"filling chunk {file_its}", unit='SNP', leave=False)
             pos = 0
             for variant in vcf:
                 assert variant.CHROM == chrom
                 progressbar.update(variant.POS - pos)
+                chunk_bar.update(chunk_size - chunk_count)
                 # quality checks
                 if pos == variant.POS:
                     raise ValueError("Duplicate positions for variant at position", pos)
@@ -201,11 +203,14 @@ def add_diploid_sites(vcf,
                     file_its += 1
                     sample_data = create_sample_data(vcf, meta, label_by, outfile, threads, file_its)
                     chunk_count = 0
+                    chunk_bar.close()
+                    chunk_bar = tqdm.tqdm(total=chunk_size, desc=f"filling chunk {file_its}", unit='SNP', leave=False)
             progressbar.close()
     # catch final chunk
     if 0 < chunk_count < chunk_size:
         print("final sample, has {chunk_count} snps")
         sample_data.finalise()
+        chunk_bar.close()
     # save excluded position for use w/ generate ancestors
     np.savetxt(f"ga.{chrom}.exclude-pos.txt", np.array(exclude_ls))
 
