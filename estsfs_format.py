@@ -150,7 +150,7 @@ def estsfs_infiles(anc_dict, n_outgroup):
 
     """
     # create input file
-    bases = ["A", "G", "C", "T"]
+    bases = ["A", "C", "G", "T"]
     counts = []
     first = next(iter(anc_dict.keys()))
     chrom = first.split("_")[0]
