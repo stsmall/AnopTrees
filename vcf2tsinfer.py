@@ -99,11 +99,11 @@ def add_meta_site(gff, pos: int):
     pos : int
         _description_
     """
-    import ipdb; ipdb.set_trace()
-    gf_part = gff[gff[(gff["start"] <= pos) & (gff["end"] >= pos)]]
     #gf_part = gff.query(f"start <= '{pos}'")
     #gf_part = gf_part.query(f"end >= '{pos}'")
-    return gf_part.to_dict()
+    gf_part = gff[gff[(gff["start"] <= pos) & (gff["end"] >= pos)]]
+    import ipdb; ipdb.set_trace()
+    return None if len(gf_part.index) == 0 else gf_part.to_dict('r')
 
 
 def add_diploid_sites(vcf,
@@ -223,7 +223,7 @@ def main():
     threads = args.threads
     label_by = args.pops_header
     meta = pd.read_csv(args.meta, sep=",", index_col="sample_id", dtype=object)
-    gff = pd.read_csv(args.gff, sep=",", dtype=object) if args.gff else None
+    gff = pd.read_csv(args.gff, sep=",", dtype={'start':int, 'end':int}) if args.gff else None
     # =========================================================================
     #  Main executions
     # =========================================================================
@@ -231,6 +231,7 @@ def main():
     chrom = vcf.seqnames[0]
     if gff is not None:
         gff = gff.query("type != 'chromosome'")
+        gff = gff.query("type != 'gene'")
         gff = gff.query(f"contig == '{chrom}'")
     add_diploid_sites(vcf=vcf,
                       meta=meta,
