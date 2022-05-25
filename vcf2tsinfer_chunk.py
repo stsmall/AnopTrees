@@ -191,7 +191,7 @@ def add_diploid_sites(vcf,
                     exclude_ls.append(pos)
                     t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
                 # add meta data to site from gff
-                meta_pos = add_meta_site(meta_gff, variant.CHROM, pos) if meta_gff else None
+                meta_pos = add_meta_site(meta_gff, variant.CHROM, pos) if meta_gff is not None else None
                 # add sites
                 sample_data.add_site(pos, genotypes=genotypes, 
                                     alleles=ordered_alleles,
