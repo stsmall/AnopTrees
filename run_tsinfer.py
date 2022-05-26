@@ -18,7 +18,29 @@ import tskit
 import tsinfer
 import tsdate
 
-def generate_ancestors(samples_fn, num_threads, prefix):
+def truncate_anc(anc, low: float = 0, high: float = .5):
+    """truncate ancestors
+    
+    in undated tree interval is from 0-1
+
+    Parameters
+    ----------
+    anc : _type_
+        _description_
+    low : float, optional
+        _description_, by default 0
+    high : float, optional
+        _description_, by default .5
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    return anc.truncate_ancestors(low, high)
+
+
+def generate_ancestors(samples_fn, num_threads, prefix, truncate=False):
     """_summary_
 
     Parameters
@@ -36,10 +58,13 @@ def generate_ancestors(samples_fn, num_threads, prefix):
         _description_
     """
     sample_data = tsinfer.load(samples_fn)
-    return tsinfer.generate_ancestors(sample_data,
+    anc_data= tsinfer.generate_ancestors(sample_data,
                                       num_threads=num_threads,
                                       path=f"{prefix}.ancestors",
                                       progress_monitor=True)
+    if truncate:
+        anc_data = truncate_anc(anc_data)
+    
 
 def match_ancestors(samples_fn, anc, num_threads, r_prob, m_prob, prefix):
     """_summary_
