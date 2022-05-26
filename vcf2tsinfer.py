@@ -137,7 +137,6 @@ def add_diploid_sites(vcf,
     meta_pos = None
     sample_data = create_sample_data(vcf, meta, label_by, outfile, threads)
     chrom = vcf.seqnames[0]
-    print(chrom)
     exclude_ls = []  # no longer skip inference but exclude site
     with open(f"{chrom}.not_inferred.txt", 'w') as t:
         with open(f"{chrom}.missing_data.txt", 'w') as f:
@@ -189,7 +188,7 @@ def add_diploid_sites(vcf,
                                     )
             progressbar.close()
             sample_data.finalise()
-    np.savetxt(f"{chrom}.exclude-pos.txt", np.array(exclude_ls))
+    np.savetxt(f"ga.{chrom}.exclude-pos.txt", np.array(exclude_ls))
 
 
 def parse_args(args_in):
