@@ -167,9 +167,12 @@ def add_diploid_sites(vcf,
                 # inference == False; bad ancestral: AAProb in ['not', 'dbl', 'NA'] maj
                 inference = len(ordered_alleles) <= 2 and ancestral_cond not in ['not_seg_allele', 'dbl_node', 'not_inferred', "maj_default"]
                 # genotypes
-                genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
+                if ancestral == variant.REF:
+                    genotypes = [old_index for row in variant.genotypes for old_index in row[:2]]
+                else:
+                    genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
                 # handle missing genotypes
-                if missing:
+                if missing and variant.num_unknown > 0:
                     missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
                     if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
                         inference = False
