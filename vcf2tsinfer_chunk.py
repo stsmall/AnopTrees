@@ -254,7 +254,8 @@ def main():
     if gff is not None:
         gff = gff.query("type != 'chromosome'")
         gff = gff.query("type != 'gene'")
-        gff = gff.query(f"contig == '{chrom}'")   add_diploid_sites(vcf=vcf,
+        gff = gff.query(f"contig == '{chrom}'")
+    add_diploid_sites(vcf=vcf,
                       meta=meta,
                       meta_gff=gff,
                       threads=threads,
