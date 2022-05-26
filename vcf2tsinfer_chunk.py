@@ -245,7 +245,7 @@ def main():
     label_by = args.pops_header
     chunks = args.chunk_size
     meta = pd.read_csv(args.meta, sep=",", index_col="sample_id", dtype=object)
-    gff = pd.read_csv(args.gff, sep=",", dtype=object) if args.gff else None    
+    gff = pd.read_csv(args.gff, sep=",", dtype={'start':int, 'end':int}) if args.gff else None    
     # =========================================================================
     #  Main executions
     # =========================================================================
