@@ -177,7 +177,7 @@ def add_diploid_sites(vcf,
                 # mark uninferred sites
                 if not inference:
                     exclude_ls.append(pos)
-                    t.write(f"{pos}\t{alleles}\t{ancestral_prob}\n")
+                    t.write(f"{pos}\t{alleles}\t{ancestral_prob}\t{ancestral_cond}\n")
                 # add meta data to site from gff
                 if not meta_pos or not (meta_pos["start"] < pos < meta_pos["end"]):              
                     meta_pos = add_meta_site(meta_gff, pos) if meta_gff is not None else None
