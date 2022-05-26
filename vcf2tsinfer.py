@@ -108,7 +108,8 @@ def add_diploid_sites(vcf,
                       meta_gff,
                       threads: int,
                       outfile: str,
-                      label_by: str
+                      label_by: str,
+                      missing: bool = False
                       ):
     """_summary_
 
@@ -168,12 +169,13 @@ def add_diploid_sites(vcf,
                 # genotypes
                 genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
                 # handle missing genotypes
-                missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
-                if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
-                    inference = False
-                for i in missing_genos:
-                    genotypes[i] = tskit.MISSING_DATA
-                    f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
+                if missing:
+                    missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
+                    if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
+                        inference = False
+                    for i in missing_genos:
+                        genotypes[i] = tskit.MISSING_DATA
+                        f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
                 # mark uninferred sites
                 if not inference:
                     exclude_ls.append(pos)
@@ -205,6 +207,7 @@ def parse_args(args_in):
                         "Columns must include position")
     parser.add_argument('-t', "--threads", type=int, default=1)
     parser.add_argument("--pops_header", type=str, default="country")
+    parser.add_argument("--missing", action="store_true", help="if you have missing data")
     return parser.parse_args(args_in)
 
 
@@ -234,7 +237,8 @@ def main():
                       meta_gff=gff,
                       threads=threads,
                       outfile=outfile,
-                      label_by=label_by)
+                      label_by=label_by,
+                      missing=args.missing)
 
 if __name__ == "__main__":
     main()

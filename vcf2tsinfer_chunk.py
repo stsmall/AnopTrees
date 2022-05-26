@@ -110,7 +110,8 @@ def add_diploid_sites(vcf,
                       threads: int, 
                       outfile: str, 
                       label_by: str, 
-                      chunk_size: int):
+                      chunk_size: int,
+                      missing: bool = False):
     """_summary_
 
     Parameters
@@ -170,6 +171,7 @@ def add_diploid_sites(vcf,
                 # inference == False; bad ancestral: AAProb in ['not', 'dbl', 'NA'] maj
                 inference = len(ordered_alleles) <= 2 and ancestral_cond not in ['not_seg_allele', 'dbl_node', 'not_inferred', "maj_default"]
                 # genotypes
+                #if ancestral != variant.REF:
                 genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
                 # singleton/doubleton dont count in tsinfer, dont count towards chunk
                 if sum(genotypes) > 2:
@@ -180,13 +182,14 @@ def add_diploid_sites(vcf,
                         chunk_count += 1
                         chunk_bar.update(1)
                 # handle missing genotypes
-                missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
-                if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
-                    inference = False
-                for i in missing_genos:
-                    genotypes[i] = tskit.MISSING_DATA
-                    f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
-                # mark uninferred sites
+                if missing:
+                    missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
+                    if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
+                        inference = False
+                    for i in missing_genos:
+                        genotypes[i] = tskit.MISSING_DATA
+                        f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
+                    # mark uninferred sites
                 if not inference:
                     exclude_ls.append(pos)
                     t.write(f"{pos}\t{alleles}\t{ancestral_prob}\t{ancestral_cond}\n")
@@ -230,6 +233,7 @@ def parse_args(args_in):
     parser.add_argument("--pops_header", type=str, default="country")
     parser.add_argument("--chunk_size", type=int, default=100000,
                         help="number of snps per chunk, not counting singletons")
+    parser.add_argument("--missing", action="store_true", help="if you have missing data")
     return parser.parse_args(args_in)
 
 
@@ -261,7 +265,8 @@ def main():
                       threads=threads,
                       outfile=outfile,
                       label_by=label_by,
-                      chunk_size=chunks)
+                      chunk_size=chunks,
+                      missing=args.missing)
 
 if __name__ == "__main__":
     main()
