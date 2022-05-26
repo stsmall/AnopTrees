@@ -64,6 +64,7 @@ def generate_ancestors(samples_fn, num_threads, prefix, truncate=False):
                                       progress_monitor=True)
     if truncate:
         anc_data = truncate_anc(anc_data)
+    return anc_data
     
 
 def match_ancestors(samples_fn, anc, num_threads, r_prob, m_prob, prefix):
@@ -184,6 +185,7 @@ def parse_args(args_in):
     parser.add_argument("--mismatch_ma", type=float, default=1, help="")
     parser.add_argument("--mismatch_ms", type=float, default=1, help="")
     parser.add_argument("--reinfer", action="store_true", help="reinfer on a dated tree")
+    parser.add_argument("--truncate", action="store_true", help="truncate ancestors")
     parser.add_argument("-V", "--version", action="version", version=versions)
     return parser.parse_args(args_in)
 
@@ -216,7 +218,8 @@ def main():
         anc = generate_ancestors(
             samples_fn=samples,
             num_threads=threads,
-            prefix=prefix)
+            prefix=prefix,
+            truncate=args.truncate)
         inferred_anc_ts = match_ancestors(
             samples_fn=samples,
             anc=anc,
