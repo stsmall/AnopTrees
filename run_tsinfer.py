@@ -17,10 +17,14 @@ import os
 import tskit
 import tsinfer
 import tsdate
+import daiquiri
+import logging
+daiquiri.setup(level=logging.INFO)
+
 
 def truncate_anc(anc, low: float = 0, high: float = .5):
     """truncate ancestors
-    
+
     in undated tree interval is from 0-1
 
     Parameters
@@ -64,8 +68,9 @@ def generate_ancestors(samples_fn, num_threads, prefix, truncate=False):
                                       progress_monitor=True)
     if truncate:
         anc_data = truncate_anc(anc_data)
+        anc_data.dump(f"{prefix}.trunc.ancestors")
     return anc_data
-    
+
 
 def match_ancestors(samples_fn, anc, num_threads, r_prob, m_prob, prefix):
     """_summary_
@@ -90,7 +95,6 @@ def match_ancestors(samples_fn, anc, num_threads, r_prob, m_prob, prefix):
     _type_
         _description_
     """
-    print(f"{num_threads},{r_prob},{m_prob}")
     sample_data = tsinfer.load(samples_fn)
     inferred_anc_ts = tsinfer.match_ancestors(
         sample_data,
@@ -127,7 +131,6 @@ def match_samples(samples_fn, inferred_anc_ts, num_threads, r_prob, m_prob, pref
     _type_
         _description_
     """
-    print(f"{num_threads},{r_prob},{m_prob}")
     sample_data = tsinfer.load(samples_fn)
     inferred_ts = tsinfer.match_samples(
         sample_data,
@@ -220,6 +223,8 @@ def main():
             num_threads=threads,
             prefix=prefix,
             truncate=args.truncate)
+        if args.truncate:
+            prefix = f"{prefix}.trunc"
         inferred_anc_ts = match_ancestors(
             samples_fn=samples,
             anc=anc,
@@ -240,9 +245,12 @@ def main():
         anc = generate_ancestors(
             samples_fn=samples,
             num_threads=threads,
-            prefix=prefix)
+            prefix=prefix,
+            truncate=args.truncate)
     if args.step == "MA":
-        anc = tsinfer.load(f"{args.prefix}.truncated.ancestors")
+        if not os.path.isfile(f"{prefix}.ancestors"):
+            raise ValueError("No anc file")
+        anc = tsinfer.load(f"{prefix}.ancestors")
         inferred_anc_ts = match_ancestors(
             samples_fn=samples,
             anc=anc,
@@ -252,7 +260,8 @@ def main():
             prefix=prefix
             )
     if args.step == "MS":
-        anc = tsinfer.load(f"{args.prefix}.truncated.ancestors")
+        if not os.path.isfile(f"{prefix}.atrees"):
+            raise ValueError("No atrees file")
         inferred_anc_ts = tskit.load(f"{prefix}.atrees")
         match_samples(
             samples_fn=samples,
