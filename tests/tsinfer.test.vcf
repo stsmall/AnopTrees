@@ -13,11 +13,11 @@
 ##bcftools_concatVersion=1.11+htslib-1.11
 ##bcftools_concatCommand=concat --file-list phased_vcf_list.txt --ligate --output ag3_gamb_colu_X_phased.vcf.gz --output-type z; Date=Wed Jul 21 09:25:10 2021
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	AA0045-C	AA0046-C	AA0047-C	AA0048-C	AA0050-C	AA0057-C
-X	3	.	G	A	.	.	AA=G;AAProb=0.988642;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0	GT:PS	0|0:3	0|0:3	0|0:3	0|0:3	0|0:3	0|0:3
-X	4	.	A	G	.	.	AA=A;AAProb=0.988651;AAcond=maj_anc;AC=3;AF=0.000613748;CM=2.00002e-06	GT:PS	0|0:3	0|0:3	0|0:3	1|1:3	0|0:3	0|0:3
-X	6	.	C	T	.	.	AA=C;AAProb=0.988638;AAcond=maj_anc;AC=2;AF=0.000409165;CM=6.00007e-06	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
-X	9	.	C	T	.	.	AA=C;AAProb=0.988638;AAcond=maj_anc;AC=1;AF=0.000204583;CM=1.20001e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
-X	14	.	C	A	.	.	AA=C;AAProb=0.988643;AAcond=maj_anc;AC=1;AF=0.000204583;CM=2.20003e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	3	.	G	A	.	.	AA=G;AAProb=0.988642;AAcond=not_seg_allele;AC=1;AF=0.000204583;CM=0	GT:PS	0|0:3	0|0:3	0|0:3	0|0:3	0|0:3	0|0:3
+X	4	.	A	G	.	.	AA=A;AAProb=0.988651;AAcond=maj_anc;AC=3;AF=0.000613748;CM=2.00002e-06	GT:PS	1|1:3	1|1:3	1|1:3	1|1:3	1|1:3	1|1:3
+X	6	.	C	T	.	.	AA=C;AAProb=0.988638;AAcond=maj_anc;AC=2;AF=0.000409165;CM=6.00007e-06	GT:PS	0|0:3	0|0:3	0|0:3	0|0:3	0|0:3	0|0:3
+X	9	.	C	T	.	.	AA=C;AAProb=0.988638;AAcond=maj_anc;AC=1;AF=0.000204583;CM=1.20001e-05	GT:PS	0|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	14	.	C	A	.	.	AA=C;AAProb=0.988643;AAcond=maj_anc;AC=1;AF=0.000204583;CM=2.20003e-05	GT:PS	0|0:3	0|0:3	0|0:3	1|1:3	0|0:3	0|0:3
 X	17	.	C	G	.	.	AA=C;AAProb=0.9999;AAcond=maj_anc;AC=1;AF=0.000204583;CM=2.80003e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
 X	21	.	A	G	.	.	AA=A;AAProb=0.988651;AAcond=maj_anc;AC=1;AF=0.000204583;CM=3.60004e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
 X	32	.	T	C	.	.	AA=T;AAProb=0.965326;AAcond=maj_anc;AC=3;AF=0.000613748;CM=5.80007e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
