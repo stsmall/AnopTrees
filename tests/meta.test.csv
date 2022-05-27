@@ -1,0 +1,7 @@
+sample_id,sample_name,country,location,year,month,latitude,longitude,sex_call,taxon
+AA0045-C,AA0045-C,Ghana,Koforidua,2012,11,6.094,-0.261,F,gambiae
+AA0046-C,AA0046-C,Ghana,Koforidua,2012,11,6.094,-0.261,F,gambiae
+AA0047-C,AA0047-C,Ghana,Koforidua,2012,11,6.094,-0.261,F,gambiae
+AA0048-C,AA0048-C,Ghana,Madina_West,2012,11,5.668,-0.219,F,gambiae
+AA0050-C,AA0050-C,Ghana,Madina_West,2012,11,5.668,-0.219,F,gambiae
+AA0057-C,AA0057-C,Ghana,Koforidua,2012,11,6.094,-0.261,F,gambiae

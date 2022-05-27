@@ -174,7 +174,6 @@ def parse_args(args_in):
     parser = argparse.ArgumentParser(description="",
                                      prog=sys.argv[0],
                                      formatter_class=prog)
-    parser.add_argument("--verbosity", "-v", action="count", default=0)
     parser.add_argument("samples",
                         help="The samples file name, as saved by tsinfer.SampleData.initialise()")
     parser.add_argument("prefix", help="The prefix of the output filename")

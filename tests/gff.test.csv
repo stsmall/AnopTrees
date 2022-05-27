@@ -1,0 +1,7 @@
+#contig,source,type,start,end,score,strand,phase,Parent,Name,description
+X,VectorBase,gene,20,120,,-,,AGAP000002-RA,AGAP000002-RA-E5,WW domain-containing protein
+X,VectorBase,exon,20,65,,-,2.0,AGAP000002-RA,,WW domain-containing protein
+X,VectorBase,CDS,20,65,,-,,AGAP000002-RA,AGAP000002-RA-E4,WW domain-containing protein
+X,VectorBase,exon,90,95,,-,1.0,AGAP000002-RA,,WW domain-containing protein
+X,VectorBase,CDS,90,95,,-,,AGAP000002-RA,AGAP000002-RA-E3,WW domain-containing protein
+X,VectorBase,five_prime_UTR,95,120,,-,2.0,AGAP000002-RA,,WW domain-containing protein

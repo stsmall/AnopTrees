@@ -1,0 +1,50 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##fileDate=20/07/2021 - 13:55:02
+##source=shapeit4.1.3
+##contig=<ID=X,length=24393108>
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency">
+##INFO=<ID=AC,Number=1,Type=Integer,Description="Allele count">
+##INFO=<ID=CM,Number=A,Type=Float,Description="Interpolated cM position">
+##INFO=<ID=AA,Number=1,Type=String,Description="Anc Allele">
+##INFO=<ID=AAProb,Number=A,Type=Float,Description="Prob Maj is Anc">
+##FORMAT=<ID=PQ,Number=1,Type=Integer,Description="Phasing Quality (bigger is better)">
+##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phase Set">
+##bcftools_concatVersion=1.11+htslib-1.11
+##bcftools_concatCommand=concat --file-list phased_vcf_list.txt --ligate --output ag3_gamb_colu_X_phased.vcf.gz --output-type z; Date=Wed Jul 21 09:25:10 2021
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	AA0045-C	AA0046-C	AA0047-C	AA0048-C	AA0050-C	AA0057-C
+X	3	.	G	A	.	.	AA=G;AAProb=0.988642;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0	GT:PS	0|0:3	0|0:3	0|0:3	0|0:3	0|0:3	0|0:3
+X	4	.	A	G	.	.	AA=A;AAProb=0.988651;AAcond=maj_anc;AC=3;AF=0.000613748;CM=2.00002e-06	GT:PS	0|0:3	0|0:3	0|0:3	1|1:3	0|0:3	0|0:3
+X	6	.	C	T	.	.	AA=C;AAProb=0.988638;AAcond=maj_anc;AC=2;AF=0.000409165;CM=6.00007e-06	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	9	.	C	T	.	.	AA=C;AAProb=0.988638;AAcond=maj_anc;AC=1;AF=0.000204583;CM=1.20001e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	14	.	C	A	.	.	AA=C;AAProb=0.988643;AAcond=maj_anc;AC=1;AF=0.000204583;CM=2.20003e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	17	.	C	G	.	.	AA=C;AAProb=0.9999;AAcond=maj_anc;AC=1;AF=0.000204583;CM=2.80003e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	21	.	A	G	.	.	AA=A;AAProb=0.988651;AAcond=maj_anc;AC=1;AF=0.000204583;CM=3.60004e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	32	.	T	C	.	.	AA=T;AAProb=0.965326;AAcond=maj_anc;AC=3;AF=0.000613748;CM=5.80007e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	34	.	A	T	.	.	AA=A;AAProb=0.988642;AAcond=maj_anc;AC=1;AF=0.000204583;CM=6.20007e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	39	.	C	G	.	.	AA=C;AAProb=0.988647;AAcond=maj_anc;AC=1;AF=0.000204583;CM=7.20009e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	40	.	C	A	.	.	AA=C;AAProb=0.988643;AAcond=maj_anc;AC=1;AF=0.000204583;CM=7.40009e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	44	.	A	C	.	.	AA=A;AAProb=0.965313;AAcond=maj_anc;AC=2;AF=0.000409165;CM=8.2001e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	45	.	G	T	.	.	AA=G;AAProb=0.988638;AAcond=maj_anc;AC=1;AF=0.000204583;CM=8.4001e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	51	.	A	C	.	.	AA=A;AAProb=0.988651;AAcond=maj_anc;AC=1;AF=0.000204583;CM=9.60011e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	52	.	G	A	.	.	AA=G;AAProb=0.965288;AAcond=maj_anc;AC=2;AF=0.000409165;CM=9.80012e-05	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	56	.	C	T	.	.	AA=C;AAProb=0.992875;AAcond=maj_anc;AC=5;AF=0.00102291;CM=0.000106001	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	59	.	T	A	.	.	AA=T;AAProb=0.988651;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000112001	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	61	.	A	C	.	.	AA=A;AAProb=0.965313;AAcond=maj_anc;AC=2;AF=0.000409165;CM=0.000116001	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	62	.	A	C	.	.	AA=A;AAProb=0.988651;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000118001	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	69	.	T	A	.	.	AA=T;AAProb=0.988651;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000132002	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	72	.	T	C	.	.	AA=T;AAProb=0.988655;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000138002	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	77	.	A	C	.	.	AA=A;AAProb=0.988651;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000148002	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	93	.	A	C	.	.	AA=A;AAProb=0.988651;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000180002	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	96	.	T	A	.	.	AA=T;AAProb=0.988651;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000186002	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	99	.	C	A	.	.	AA=C;AAProb=0.988643;AAcond=maj_anc;AC=2;AF=0.000409165;CM=0.000192002	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	100	.	A	C	.	.	AA=A;AAProb=0.999864;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000194002	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	102	.	A	C	.	.	AA=A;AAProb=0.988651;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000198002	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	103	.	T	G	.	.	AA=T;AAProb=0.988656;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000200002	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	108	.	A	T	.	.	AA=A;AAProb=0.988642;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000210002	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	110	.	A	T	.	.	AA=A;AAProb=0.992244;AAcond=maj_anc;AC=14;AF=0.00286416;CM=0.000214003	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	116	.	C	A	.	.	AA=C;AAProb=0.988643;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000226003	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	117	.	T	G	.	.	AA=T;AAProb=0.999853;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000228003	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	121	.	G	A	.	.	AA=G;AAProb=0.965288;AAcond=maj_anc;AC=2;AF=0.000409165;CM=0.000236003	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	123	.	T	G	.	.	AA=T;AAProb=0.988656;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000240003	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
+X	124	.	G	A	.	.	AA=G;AAProb=0.988642;AAcond=maj_anc;AC=1;AF=0.000204583;CM=0.000242003	GT:PS	1|0:3	0|0:3	0|0:3	0|1:3	0|0:3	0|0:3
