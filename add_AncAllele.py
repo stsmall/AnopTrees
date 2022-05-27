@@ -59,8 +59,9 @@ def add_aa(est_dt, vcf_infile):
                         writeaa = False
                     elif line.startswith("##contig"):
                         contig = line.strip()
-                        contig1 = contig.split("=")[-1]
-                        f.write(f"##contig=<ID={contig1[:-1]},length={contig_dt[contig1[:-1]]}>\n")
+                        if len(contig.split(",")) == 1:
+                            contig1 = contig.split("=")[-1]
+                            f.write(f"##contig=<ID={contig1[:-1]},length={contig_dt[contig1[:-1]]}>\n")
                     else:
                         f.write(line)
                 else:
