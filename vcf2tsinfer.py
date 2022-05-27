@@ -193,7 +193,7 @@ def add_diploid_sites(vcf,
                                     )
             progressbar.close()
             sample_data.finalise()
-    np.savetxt(f"ga.{chrom}.exclude-pos.txt", np.array(exclude_ls))
+    np.savetxt(f"ga.{chrom}.exclude-pos.txt", np.array(exclude_ls), fmt='%i')
 
 
 def parse_args(args_in):
@@ -233,7 +233,7 @@ def main():
     chrom = vcf.seqnames[0]
     if gff is not None:
         gff = gff.query("type != 'chromosome'")
-        #gff = gff.query("type != 'gene'")  # however this has names
+        gff = gff.query("type != 'gene'")  # however this has names
         gff = gff.query(f"contig == '{chrom}'")
     add_diploid_sites(vcf=vcf,
                       meta=meta,
