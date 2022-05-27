@@ -232,8 +232,6 @@ def main():
     vcf = cyvcf2.VCF(vcf_path)
     chrom = vcf.seqnames[0]
     if gff is not None:
-        gff = gff.query("type != 'chromosome'")
-        gff = gff.query("type != 'gene'")  # however this has names
         gff = gff.query(f"contig == '{chrom}'")
     add_diploid_sites(vcf=vcf,
                       meta=meta,
