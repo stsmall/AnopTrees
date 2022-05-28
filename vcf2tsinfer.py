@@ -186,8 +186,7 @@ def add_diploid_sites(vcf,
                 # add sites
                 sample_data.add_site(pos, genotypes=genotypes,
                                     alleles=ordered_alleles,
-                                    metadata=meta_pos,
-                                    )
+                                    metadata=meta_pos)
             progressbar.close()
             sample_data.finalise()
 
@@ -202,8 +201,7 @@ def parse_args(args_in):
                         help="metadata for names and populations."
                         "Columns must include sample_id")
     parser.add_argument("--gff", type=str, default=None,
-                        help="metadata for positions."
-                        "Columns must include position")
+                        help="metadata for positions.")
     parser.add_argument('-t', "--threads", type=int, default=1)
     parser.add_argument("--pops_header", type=str, default="country")
     parser.add_argument("--missing", action="store_true", help="if you have missing data")

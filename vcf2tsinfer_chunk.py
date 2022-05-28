@@ -15,8 +15,7 @@
             https://tsinfer.readthedocs.io/en/latest/api.html#file-formats
             python -m pip install git+https://github.com/tskit-dev/tsinfer
 @Usage   :  python vcf2tsinfer_chunk.py --vcf chr2L.recode.vcf --outfile chr2L \
-            --meta FILE.meta.csv -t 2 --pops_header country --chunk_size 100000 &&
-            tsinfer infer chr2L.samples -o -t 30
+            --meta FILE.meta.csv -t 2 --pops_header country --chunk_size 100000
 """
 
 import argparse
@@ -54,11 +53,11 @@ def add_metadata(vcf, samples, meta, label_by: str):
         samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
 
 
-def create_sample_data(vcf, 
-                       meta, 
-                       label_by: str, 
-                       outfile: str, 
-                       threads: int, 
+def create_sample_data(vcf,
+                       meta,
+                       label_by: str,
+                       outfile: str,
+                       threads: int,
                        file_its: int):
     """_summary_
 
@@ -105,11 +104,11 @@ def add_meta_site(gff, pos: int):
 
 
 def add_diploid_sites(vcf,
-                      meta, 
-                      meta_gff, 
-                      threads: int, 
-                      outfile: str, 
-                      label_by: str, 
+                      meta,
+                      meta_gff,
+                      threads: int,
+                      outfile: str,
+                      label_by: str,
                       chunk_size: int,
                       missing: bool = False):
     """_summary_
@@ -136,8 +135,8 @@ def add_diploid_sites(vcf,
     ValueError
         _description_
     """
+    percent_miss = 0.10
     meta_pos = None
-    exclude_ls = []
     file_its = 0
     chunk_count = 0
     sample_data = create_sample_data(vcf, meta, label_by, outfile, threads, file_its)
@@ -148,9 +147,9 @@ def add_diploid_sites(vcf,
             chunk_bar = tqdm.tqdm(total=chunk_size, desc=f"filling chunk {file_its}", unit='SNP', leave=False)
             pos = 0
             for variant in vcf:
-                assert variant.CHROM == chrom
                 progressbar.update(variant.POS - pos)
                 # quality checks
+                assert variant.CHROM == chrom
                 if pos == variant.POS:
                     raise ValueError("Duplicate positions for variant at position", pos)
                 else:
@@ -166,10 +165,11 @@ def add_diploid_sites(vcf,
                 ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
                 allele_index = {old_index: ordered_alleles.index(allele) for old_index,
                                 allele in enumerate(alleles)}
-                # should we use site for inference?
-                # inference == False; triallelic: if len(ordered_alleles) > 2
-                # inference == False; bad ancestral: AAProb in ['not', 'dbl', 'NA'] maj
+                # check for bad sites
                 inference = len(ordered_alleles) <= 2 and ancestral_cond not in ['not_seg_allele', 'dbl_node', 'not_inferred', "maj_default"]
+                if not inference:
+                    t.write(f"{pos}\t{alleles}\t{ancestral_prob}\t{ancestral_cond}\n")
+                    continue
                 # genotypes
                 if ancestral == variant.REF:
                     genotypes = [old_index for row in variant.genotypes for old_index in row[:2]]
@@ -186,23 +186,20 @@ def add_diploid_sites(vcf,
                 # handle missing genotypes
                 if missing and variant.num_unknown > 0:
                     missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
-                    if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
-                        inference = False
+                    if len(missing_genos) > len(missing_genos) * percent_miss:  # cap at 10% missing for a site
+                        t.write(f"{pos}\t{alleles}\t{ancestral_prob}\t{ancestral_cond}\n")
+                        continue
                     for i in missing_genos:
                         genotypes[i] = tskit.MISSING_DATA
                         f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
-                    # mark uninferred sites
-                if not inference:
-                    exclude_ls.append(pos)
-                    t.write(f"{pos}\t{alleles}\t{ancestral_prob}\t{ancestral_cond}\n")
                 # add meta data to site from gff
-                if not meta_pos or not (meta_pos["start"] < pos < meta_pos["end"]):              
+                if not meta_pos or not (meta_pos["start"] < pos < meta_pos["end"]):
                     meta_pos = add_meta_site(meta_gff, pos) if meta_gff is not None else None
                 # add sites
-                sample_data.add_site(pos, genotypes=genotypes, 
+                sample_data.add_site(pos, genotypes=genotypes,
                                     alleles=ordered_alleles,
-                                    metadata=meta_pos
-                                    )               # check file size
+                                    metadata=meta_pos)
+                # check file size
                 if chunk_count >= chunk_size:
                     sample_data.finalise()
                     file_its += 1
@@ -216,8 +213,6 @@ def add_diploid_sites(vcf,
         print("final sample, has {chunk_count} snps")
         sample_data.finalise()
         chunk_bar.close()
-    # save excluded position for use w/ generate ancestors
-    np.savetxt(f"ga.{chrom}.exclude-pos.txt", np.array(exclude_ls))
 
 
 def parse_args(args_in):
@@ -251,15 +246,13 @@ def main():
     label_by = args.pops_header
     chunks = args.chunk_size
     meta = pd.read_csv(args.meta, sep=",", index_col="sample_id", dtype=object)
-    gff = pd.read_csv(args.gff, sep=",", dtype={'start':int, 'end':int}) if args.gff else None    
+    gff = pd.read_csv(args.gff, sep=",", dtype={'start':int, 'end':int}) if args.gff else None
     # =========================================================================
     #  Main executions
     # =========================================================================
     vcf = cyvcf2.VCF(vcf_path)
     chrom = vcf.seqnames[0]
     if gff is not None:
-        gff = gff.query("type != 'chromosome'")
-        gff = gff.query("type != 'gene'")
         gff = gff.query(f"contig == '{chrom}'")
     add_diploid_sites(vcf=vcf,
                       meta=meta,
