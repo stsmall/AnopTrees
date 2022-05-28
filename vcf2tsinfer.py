@@ -1,6 +1,6 @@
 # -*-coding:utf-8 -*-
 """
-@File    :  vcf2tsinfer_chunk.py
+@File    :  vcf2tsinfer.py
 @Time    :  2022/05/23 09:20:25
 @Author  :  Scott T Small
 @Version :  1.0
@@ -14,9 +14,8 @@
             max_file_size=2**37 that seems to fix this.
             https://tsinfer.readthedocs.io/en/latest/api.html#file-formats
             python -m pip install git+https://github.com/tskit-dev/tsinfer
-@Usage   :  python vcf2tsinfer_chunk.py --vcf chr2L.recode.vcf --outfile chr2L \
-            --meta FILE.meta.csv -t 2 --pops_header country --chunk_size 100000 &&
-            tsinfer infer chr2L.samples -o -t 30
+@Usage   :  python vcf2tsinfer.py --vcf chr2L.recode.vcf --outfile chr2L \
+            --meta FILE.meta.csv -t 2 --pops_header country
 """
 
 import argparse
@@ -135,10 +134,10 @@ def add_diploid_sites(vcf,
     ValueError
         _description_
     """
+    percent_miss = 0.10
     meta_pos = None
     sample_data = create_sample_data(vcf, meta, label_by, outfile, threads)
     chrom = vcf.seqnames[0]
-    exclude_ls = []  # no longer skip inference but exclude site
     with open(f"{chrom}.not_inferred.txt", 'w') as t:
         with open(f"{chrom}.missing_data.txt", 'w') as f:
             progressbar = tqdm.tqdm(total=vcf.seqlens[0], desc="Read VCF", unit='bp')
@@ -162,10 +161,11 @@ def add_diploid_sites(vcf,
                 ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
                 allele_index = {old_index: ordered_alleles.index(allele) for old_index,
                                 allele in enumerate(alleles)}
-                # should we use site for inference?
-                # inference == False; triallelic: if len(ordered_alleles) > 2
-                # inference == False; bad ancestral: AAProb in ['not', 'dbl', 'NA'] maj
+                # check for bad sites
                 inference = len(ordered_alleles) <= 2 and ancestral_cond not in ['not_seg_allele', 'dbl_node', 'not_inferred', "maj_default"]
+                if not inference:
+                    t.write(f"{pos}\t{alleles}\t{ancestral_prob}\t{ancestral_cond}\n")
+                    continue
                 # genotypes
                 if ancestral == variant.REF:
                     genotypes = [old_index for row in variant.genotypes for old_index in row[:2]]
@@ -174,15 +174,12 @@ def add_diploid_sites(vcf,
                 # handle missing genotypes
                 if missing and variant.num_unknown > 0:
                     missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
-                    if len(missing_genos) > len(missing_genos) * .10:  # cap at 10% missing for a site
-                        inference = False
+                    if len(missing_genos) > len(missing_genos) * percent_miss:  # cap at 10% missing for a site
+                        t.write(f"{pos}\t{alleles}\t{ancestral_prob}\t{ancestral_cond}\n")
+                        continue
                     for i in missing_genos:
                         genotypes[i] = tskit.MISSING_DATA
                         f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
-                # mark uninferred sites
-                if not inference:
-                    exclude_ls.append(pos)
-                    t.write(f"{pos}\t{alleles}\t{ancestral_prob}\t{ancestral_cond}\n")
                 # add meta data to site from gff
                 if not meta_pos or not (meta_pos["start"] < pos < meta_pos["end"]):              
                     meta_pos = add_meta_site(meta_gff, pos) if meta_gff is not None else None
@@ -193,7 +190,6 @@ def add_diploid_sites(vcf,
                                     )
             progressbar.close()
             sample_data.finalise()
-    np.savetxt(f"ga.{chrom}.exclude-pos.txt", np.array(exclude_ls), fmt='%i')
 
 
 def parse_args(args_in):
