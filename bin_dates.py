@@ -21,7 +21,7 @@ if __name__ == "__main__":
     sd = tsinfer.load(args.input_file).copy(path=args.output_file)
 
     times = sd.sites_time[:]
-    times[times > 1] = np.round(times[times > 1], -1)
+    times[times > 1] = np.round(times[times > 1], -1)  # here -1 is 10, -2 would be 100
     times[times == 0] = 1
     sd.sites_time[:] = times
     print(
