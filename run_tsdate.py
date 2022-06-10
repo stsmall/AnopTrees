@@ -47,27 +47,23 @@ def main():
     # =================================================================
     if not os.path.isfile(args.input):
         raise ValueError("No input tree sequence file")
-    # TODO: check unary option
     input_ts = tskit.load(args.input)
-    # TODO: check preprocess defaults
-    input_ts_pre = tsdate.preprocess_ts(input_ts,
-                                        filter_populations=False,
-                                        filter_individuals=False,
-                                        filter_sites=False,)
-                                        # keep_unary=False,
-                                        # keep_unary_in_individuals=True,)
+    input_ts_pre = input_ts.simplify(filter_populations=False,
+                                    filter_individuals=False,
+                                    filter_sites=False,
+                                    keep_unary=False,
+                                    keep_unary_in_individuals=True,)
     if args.flat_prior:
         priors = tsdate.build_prior_grid(input_ts_pre, args.Ne)
-        priors.grid_data[:] = np.ones_like(priors.grid_data[:])  # flat?
-    else:    
+        priors.grid_data[:] = np.ones_like(priors.grid_data[:])
+    else:
         priors = tsdate.build_prior_grid(input_ts_pre, Ne = args.Ne, approximate_priors=True)
     ts = tsdate.date(input_ts_pre,
-                     mutation_rate=args.mutation_rate,
-                     recombination_rate=args.recombination_rate,
-                     priors=priors,
-                     num_threads=args.threads,
-                     ignore_oldest_root=True,
-                     progress=True)
+                    mutation_rate=args.mutation_rate,
+                    priors=priors,
+                    num_threads=args.threads,
+                    ignore_oldest_root=True,
+                    progress=True)
     ts.dump(args.output)
 
 

@@ -56,7 +56,9 @@ def add_aa(est_dt, vcf_infile):
                     if line.startswith("##FORMAT") and writeaa:
                         f.write('##INFO=<ID=AA,Number=1,Type=String,Description="Anc Allele">\n')
                         f.write('##INFO=<ID=AAProb,Number=A,Type=Float,Description="Prob Maj is Anc">\n')
+                        f.write('##INFO=<ID=AAcond,Number=1,Type=String,Description="Anc Notes">\n')
                         writeaa = False
+                        f.write(line)
                     elif line.startswith("##contig"):
                         contig = line.strip()
                         if len(contig.split(",")) == 1:
