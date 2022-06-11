@@ -45,12 +45,16 @@ def add_metadata(vcf, samples, meta, label_by: str):
     """
     pop_lookup = {}
     pop_lookup = {pop: samples.add_population(metadata={label_by: pop}) for pop in meta[label_by].unique()}
+    chrom = vcf.seqnames[0]
     for indiv in vcf.samples:
         meta_dict = meta.loc[indiv].to_dict()
         pop = pop_lookup[meta.loc[indiv][label_by]]
         lat = meta.loc[indiv]["latitude"]
         lon = meta.loc[indiv]["longitude"]
-        samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
+        if chrom == "X" and meta.loc[indiv]["sex_call"] == "M":
+            samples.add_individual(ploidy=1, metadata=meta_dict, location=(lat, lon), population=pop)
+        else:
+            samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
 
 
 def create_sample_data(vcf,
@@ -181,7 +185,7 @@ def add_diploid_sites(vcf,
                         genotypes[i] = tskit.MISSING_DATA
                         f.write("{}\t{}\n".format(pos, "\t".join(list(map(str, missing_genos)))))
                 # add meta data to site from gff
-                if not meta_pos or not (meta_pos["start"] < pos < meta_pos["end"]):              
+                if not meta_pos or not (meta_pos["start"] < pos < meta_pos["end"]):
                     meta_pos = add_meta_site(meta_gff, pos) if meta_gff is not None else None
                 # add sites
                 sample_data.add_site(pos, genotypes=genotypes,
