@@ -45,12 +45,16 @@ def add_metadata(vcf, samples, meta, label_by: str):
     """
     pop_lookup = {}
     pop_lookup = {pop: samples.add_population(metadata={label_by: pop}) for pop in meta[label_by].unique()}
+    chrom = vcf.seqnames[0]
     for indiv in vcf.samples:
         meta_dict = meta.loc[indiv].to_dict()
         pop = pop_lookup[meta.loc[indiv][label_by]]
         lat = meta.loc[indiv]["latitude"]
         lon = meta.loc[indiv]["longitude"]
-        samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
+        if chrom == "X" and meta.loc[indiv]["sex_call"] == "M":
+            samples.add_individual(ploidy=1, metadata=meta_dict, location=(lat, lon), population=pop)
+        else:
+            samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
 
 
 def create_sample_data(vcf,
@@ -103,14 +107,16 @@ def add_meta_site(gff, pos: int):
     return None if len(gf_part.index) == 0 else gf_part.to_dict('records')[0]
 
 
-def add_diploid_sites(vcf,
-                      meta,
-                      meta_gff,
-                      threads: int,
-                      outfile: str,
-                      label_by: str,
-                      chunk_size: int,
-                      missing: bool = False):
+def add_diploid_sites(
+                    vcf,
+                    meta,
+                    meta_gff,
+                    threads: int,
+                    outfile: str,
+                    label_by: str,
+                    chunk_size: int,
+                    missing: bool = False
+                    ):
     """_summary_
 
     Parameters
