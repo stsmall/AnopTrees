@@ -90,7 +90,7 @@ def create_sample_data(vcf,
     """
     sample_data = tsinfer.SampleData(path=f"{outfile}.samples", num_flush_threads=threads)
     male_ix = add_metadata(vcf, sample_data, meta, label_by)
-    return sample_data, male_ix
+    return sample_data, set(male_ix)
 
 
 def add_meta_site(gff, pos: int):
@@ -201,6 +201,7 @@ def add_diploid_sites(vcf,
                 if not meta_pos or not (meta_pos["start"] < pos < meta_pos["end"]):
                     meta_pos = add_meta_site(meta_gff, pos) if meta_gff is not None else None
                 # add sites
+                genotypes = np.array(genotypes, dtype="object")
                 sample_data.add_site(pos, genotypes=genotypes,
                                     alleles=ordered_alleles,
                                     metadata=meta_pos)
