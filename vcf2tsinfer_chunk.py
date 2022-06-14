@@ -43,19 +43,21 @@ def add_metadata(vcf, samples, meta, label_by: str):
     label_by : str
         _description_
     """
+    male_ix = []
     pop_lookup = {}
     pop_lookup = {pop: samples.add_population(metadata={label_by: pop}) for pop in meta[label_by].unique()}
     chrom = vcf.seqnames[0]
-    for indiv in vcf.samples:
+    for i, indiv in enumerate(vcf.samples):
         meta_dict = meta.loc[indiv].to_dict()
         pop = pop_lookup[meta.loc[indiv][label_by]]
         lat = meta.loc[indiv]["latitude"]
         lon = meta.loc[indiv]["longitude"]
         if chrom == "X" and meta.loc[indiv]["sex_call"] == "M":
+            male_ix.append(i)
             samples.add_individual(ploidy=1, metadata=meta_dict, location=(lat, lon), population=pop)
         else:
             samples.add_individual(ploidy=2, metadata=meta_dict, location=(lat, lon), population=pop)
-
+    return male_ix
 
 def create_sample_data(vcf,
                        meta,
@@ -87,8 +89,8 @@ def create_sample_data(vcf,
     """
     outfile_name = f"{outfile}.{file_its}"
     sample_data = tsinfer.SampleData(path=f"{outfile_name}.samples", num_flush_threads=threads)
-    add_metadata(vcf, sample_data, meta, label_by)
-    return sample_data
+    male_ix = add_metadata(vcf, sample_data, meta, label_by)
+    return sample_data, male_ix
 
 
 def add_meta_site(gff, pos: int):
@@ -145,7 +147,7 @@ def add_diploid_sites(
     meta_pos = None
     file_its = 0
     chunk_count = 0
-    sample_data = create_sample_data(vcf, meta, label_by, outfile, threads, file_its)
+    sample_data, male_ix = create_sample_data(vcf, meta, label_by, outfile, threads, file_its)
     chrom = vcf.seqnames[0]
     with open(f"{chrom}.not_inferred.txt", 'w') as t:
         with open(f"{chrom}.missing_data.txt", 'w') as f:
@@ -177,10 +179,19 @@ def add_diploid_sites(
                     t.write(f"{pos}\t{alleles}\t{ancestral_prob}\t{ancestral_cond}\n")
                     continue
                 # genotypes
-                if ancestral == variant.REF:
-                    genotypes = [old_index for row in variant.genotypes for old_index in row[:2]]
+                if chrom == "X":
+                    genotypes = []
+                    for i, row in enumerate(variant.genotypes):
+                        old_index = row[:1] if i in male_ix else row[:2]
+                        if ancestral == variant.REF:
+                            genotypes.extend(old_index)
+                        else:
+                            genotypes.extend([allele_index[i] for i in old_index])
                 else:
-                    genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
+                    if ancestral == variant.REF:
+                        genotypes = [old_index for row in variant.genotypes for old_index in row[:2]]
+                    else:
+                        genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
                 # singleton/doubleton dont count in tsinfer, dont count towards chunk
                 if sum(genotypes) > 2:
                     chunk_count += 1
