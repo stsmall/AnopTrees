@@ -180,9 +180,9 @@ def add_diploid_sites(vcf,
                         for i, row in enumerate(variant.genotypes):
                             old_index = row[:1] if i in male_ix else row[:2]
                             if ancestral == variant.REF:
-                                genotypes.append(old_index)
+                                genotypes.extend(old_index)
                             else:
-                                genotypes.append(allele_index[old_index])  
+                                genotypes.extend(allele_index[old_index])  
                 else:
                     if ancestral == variant.REF:
                         genotypes = [old_index for row in variant.genotypes for old_index in row[:2]]
@@ -201,7 +201,7 @@ def add_diploid_sites(vcf,
                 if not meta_pos or not (meta_pos["start"] < pos < meta_pos["end"]):
                     meta_pos = add_meta_site(meta_gff, pos) if meta_gff is not None else None
                 # add sites
-                genotypes = np.array(genotypes, dtype="int8")
+                #genotypes = np.array(genotypes, dtype="int8")
                 sample_data.add_site(pos, genotypes=genotypes,
                                     alleles=ordered_alleles,
                                     metadata=meta_pos)
