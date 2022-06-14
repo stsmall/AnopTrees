@@ -181,7 +181,7 @@ def add_diploid_sites(vcf,
                         if ancestral == variant.REF:
                             genotypes.extend(old_index)
                         else:
-                            genotypes.extend(allele_index[old_index])
+                            genotypes.extend([allele_index[i] for i in old_index])
                 else:
                     if ancestral == variant.REF:
                         genotypes = [old_index for row in variant.genotypes for old_index in row[:2]]
