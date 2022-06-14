@@ -201,7 +201,7 @@ def add_diploid_sites(vcf,
                 if not meta_pos or not (meta_pos["start"] < pos < meta_pos["end"]):
                     meta_pos = add_meta_site(meta_gff, pos) if meta_gff is not None else None
                 # add sites
-                genotypes = np.array(genotypes, dtype="object")
+                genotypes = np.array(genotypes, dtype="int8")
                 sample_data.add_site(pos, genotypes=genotypes,
                                     alleles=ordered_alleles,
                                     metadata=meta_pos)
