@@ -176,18 +176,17 @@ def add_diploid_sites(vcf,
                 # genotypes
                 if chrom == "X":
                     genotypes = []
-                    if ancestral == variant.REF:
-                        for i, row in enumerate(variant.genotypes):
-                            old_index = row[:1] if i in male_ix else row[:2]
-                            if ancestral == variant.REF:
-                                genotypes.extend(old_index)
-                            else:
-                                genotypes.extend(allele_index[old_index])  
+                    for i, row in enumerate(variant.genotypes):
+                        old_index = row[:1] if i in male_ix else row[:2]
+                        if ancestral == variant.REF:
+                            genotypes.extend(old_index)
+                        else:
+                            genotypes.extend(allele_index[old_index])
                 else:
                     if ancestral == variant.REF:
                         genotypes = [old_index for row in variant.genotypes for old_index in row[:2]]
                     else:
-                        genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]                
+                        genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
                 # handle missing genotypes
                 if missing and variant.num_unknown > 0:
                     missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
