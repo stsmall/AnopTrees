@@ -134,7 +134,7 @@ def remap_alleles(CHROMS, chrom_dt):
     return chrom_aa_dt
 
 def get_accessible(chroms):
-    return np.load("agp3.accessible_pos.txt")
+    return np.load("agp3.accessible_pos.txt.npz")
 
 from dataclasses import dataclass
 @dataclass
