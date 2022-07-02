@@ -258,7 +258,7 @@ def set_parallel(func, windows, nprocs, args):
     # start job queue
     for win in win_chunks:
         args_ls = tuple(args + [win,])
-        job = pool.map(pi_win, args_ls)
+        job = pool.apply_async(pi_win, args=args_ls)
     pool.close()
     pool.join()
     return job
