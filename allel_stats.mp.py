@@ -25,6 +25,7 @@ import moments.LD as mold
 # data
 import dask
 import dask.array as da
+dask.config.set(**{'array.slicing.split_large_chunks': True})
 import numcodecs
 import numpy as np
 import pandas as pd
