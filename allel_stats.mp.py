@@ -33,7 +33,6 @@ import xarray as xr
 import zarr
 
 # globals
-CHROMS = ["2R", "2L", "3R", "3L", "X"]
 chrom_lens = {
     "2R": 61_545_105,
     "2L": 49_364_325,
@@ -273,13 +272,13 @@ def parse_args(args_in):
     parser.add_argument("meta_path", help="meta_path")
     parser.add_argument("--out_prefix", required=True, type=str,
                         help="outfile_prefix")
-    parser.add_argument('-n', "--nprocs", type=int, default=2,
+    parser.add_argument('-n', "--nprocs", type=int, default=1,
                         help="number of processors")
     parser.add_argument("--stats", default="all", choices=["pi", "theta", "tajd", "fst", 'dxy', "da", "zx", "ld"], 
                         help="choose stats")
     parser.add_argument("--pops", type=str, nargs='+', default="all",
                         help="list populations")
-    parser.add_argument("--chromosomes", type=str, nargs='+', default="all",
+    parser.add_argument("--chromosomes", type=str, nargs='+', default='all',
                         help="list chromosomes")
     return parser.parse_args(args_in)
 
@@ -289,14 +288,20 @@ def main():
     # =================================================================
     #  Gather args
     # =================================================================
-    #args = parse_args(sys.argv[1:])
+    args = parse_args(sys.argv[1:])
+    zarr_path = args.zarr_path
+    meta_path = args.meta_path
+    outfile = args.out_prefix
+    stats = args.stats_ls 
+    CHROMS = args.chromosomes
+    pops = args.pops
     # =================================================================
     #  Main executions
     # =================================================================
     chrom_dt = load_phased(CHROMS, meta_path = "../../An_gambiae.meta.csv", zarr_path="../../AgamP3.phased.zarr")
     chrom_aa_dt = remap_alleles(CHROMS, chrom_dt)
     access_dt = get_accessible(CHROMS)
-
+    CHROMS = ["2R", "2L", "3R", "3L", "X"]
     pi_dt = defaultdict(dict)
     for c in ["2R"]:
         sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
@@ -308,6 +313,7 @@ def main():
             ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
             ac_seg = ac_seg.compute()
             import ipdb;ipdb.set_trace()
+            print(ac_seg.shape)
             jobs = set_parallel("pi_win", windows, 20, [ac_pos, ac_seg, access_dt[f"access_{c}"]])
             import ipdb;ipdb.set_trace()
             #pi, win, bases, vars = pi_win(ac_pos, ac_seg, windows, access_dt[c])
