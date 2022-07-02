@@ -244,7 +244,8 @@ def ld_win(chrom, dt, pop=None, id="country", maf=0.10):
     return ld_ls
 
 #TODO: let's figure out this MP
-def pi_win(pos, ac, accessible, windows):
+def pi_win(args_ls):
+    pos, ac, accessible, windows = args_ls
     pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible=accessible)
     return pi #, win, bases, vars
 
