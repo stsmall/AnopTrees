@@ -2,7 +2,7 @@
 """
 @File    :  allel_stats.mp.py
 @Time    :  2022/07/02 18:00:24
-@Author  :  Scott T Small 
+@Author  :  Scott T Small
 @Version :  1.0
 @Contact :  stsmall@gmail.com
 @License :  Released under MIT License Copyright (c) 2022 Scott T. Small
@@ -50,7 +50,7 @@ def load_data(file):
         dt = pickle.load(handle)
     return dt
 
-def check_order(panel, samples):    
+def check_order(panel, samples):
     if np.all(samples == panel['sample_id'].values):
         order = True
         print("All in order")
@@ -75,9 +75,9 @@ def load_meta(file_path, is_X=False):
             'latitude':'float64', 'longitude':'float64', 'aim_species':'object', 'sex_call':'object'}
     cols = ['sample_id', 'country', 'location', 'year', 'month', 'latitude', 'longitude', 'aim_species', "sex_call"]
     panel = pd.read_csv(file_path, sep=',', usecols=cols, dtype=dtypes)
-    
+
     if is_X:
-        panel = panel[panel["sex_call"] == "F"]    
+        panel = panel[panel["sex_call"] == "F"]
     panel.groupby(by=(['country', "location"])).count()
     return panel
 
@@ -85,7 +85,7 @@ def load_phased(CHROMS, meta_path, zarr_path):
     callset = zarr.open_group(zarr_path, mode='r')
     chrom_dt = {}
     panel = pd.DataFrame()
-    order_ls = [] 
+    order_ls = []
     for chrom in CHROMS:
         print(chrom)
         samples = callset[f'{chrom}/samples'][:]
@@ -155,7 +155,7 @@ class AllelDataAA:
     gt: list
     pos: list
     cond: list
-    
+
 def get_windows(pos, start, stop, size=10000, step=None):
     return allel.position_windows(pos, start=start, stop=stop, size=size, step=step)
 
@@ -241,9 +241,9 @@ def ld_win(chrom, dt, pop=None, id="country", maf=0.10):
         ld_ls.append([(dist, np.mean(pw_ld[pw_dist == dist])) for dist in range(1, 10000, 100)])
     # TODO: stack and take mean across distances
     #ld = np.mean(ld_ls, axis=1)
-    return ld_ls   
+    return ld_ls
 
-#TODO: let's figure out this MP 
+#TODO: let's figure out this MP
 def pi_win(pos, ac, accessible, windows):
     pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible=accessible)
     return pi #, win, bases, vars
@@ -267,12 +267,18 @@ def parse_args(args_in):
     """Parse args."""
     prog = argparse.ArgumentDefaultsHelpFormatter
     parser = argparse.ArgumentParser(prog=sys.argv[0], formatter_class=prog)
-    parser.add_argument(help="zarr_path")
-    parser.add_argument(help="meta_path")
-    parser.add_argument(help="outfile_prefix")
-    parser.add_argument(help="number of processors") 
-    parser.add_argument(help="choose stats")
-    parser.add_argument(help="list populations")
+    parser.add_argument("zarr_path", help="zarr_path")
+    parser.add_argument("meta_path", help="meta_path")
+    parser.add_argument("--out_prefix", required=True, type=str,
+                        help="outfile_prefix")
+    parser.add_argument('-n', "--nprocs", type=int, default=2,
+                        help="number of processors")
+    parser.add_argument("--stats", default="all", choices=["pi", "theta", "tajd", "fst", 'dxy', "da", "zx", "ld"], 
+                        help="choose stats")
+    parser.add_argument("--pops", type=str, nargs='+', default="all",
+                        help="list populations")
+    parser.add_argument("--chromosomes", type=str, nargs='+', default="all",
+                        help="list chromosomes")
     return parser.parse_args(args_in)
 
 
@@ -288,7 +294,7 @@ def main():
     chrom_dt = load_phased(CHROMS, meta_path = "../../An_gambiae.meta.csv", zarr_path="../../AgamP3.phased.zarr")
     chrom_aa_dt = remap_alleles(CHROMS, chrom_dt)
     access_dt = get_accessible(CHROMS)
-    
+
     pi_dt = defaultdict(dict)
     for c in ["2R"]:
         sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
@@ -299,6 +305,7 @@ def main():
             ac = ac_subpops[pop]
             ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
             ac_seg = ac_seg.compute()
+            import ipdb;ipdb.set_trace()
             jobs = set_parallel("pi_win", windows, 20, [ac_pos, ac_seg, access_dt[f"access_{c}"]])
             import ipdb;ipdb.set_trace()
             #pi, win, bases, vars = pi_win(ac_pos, ac_seg, windows, access_dt[c])
