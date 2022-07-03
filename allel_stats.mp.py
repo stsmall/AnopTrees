@@ -314,7 +314,7 @@ def main():
     for s in stats:
         stat_dt = defaultdict(dict)
         import ipdb;ipdb.set_trace()
-        stat_fx = getattr(eval(f"{s}_win"), 'stat_fx')
+        stat_fx = eval(f"{s}_win")
         for c in CHROMS:
             if pops == 'all':
                 sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
