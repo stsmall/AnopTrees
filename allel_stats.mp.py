@@ -181,9 +181,10 @@ def write_stats_ld(stat_dt, outfile):
     with open(f"agp3.{outfile}.ld.txt", 'w') as f:
         header = f"chromosome\tpopulation\tdist_bp\tmean_D\tse_D\n"
         f.write(f"{header}")
+        dist = list(range(1, 10000, 100))
         for c in stat_dt:
             for pop in stat_dt[c]:
-                for d, m, e in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2]):
+                for d, m, e in zip(dist, stat_dt[c][pop][1], stat_dt[c][pop][2]):
                     f.write(f"{c}\t{pop}\t{d}\t{m}\t{e}\n")
 
 def get_ac(dt, pop=None, id="country"):
@@ -253,12 +254,13 @@ def ld_win(chrom, dt, pop, id="country", maf=0.10):
         c2 = pos_r[:, None]
         pw_dist = ssp.distance.pdist(c2, 'cityblock')
         pw_ld = mold.Parsing.compute_pairwise_stats(gn)[0]
-        ld_ls.append([(dist, np.mean(pw_ld[pw_dist == dist])) for dist in range(1, 10000, 100)])
-    # TODO: stack and take mean across distances
-    #ld = np.mean(ld_ls, axis=1)
-    import ipdb;ipdb.set_trace()
-    return ld_ls
+        ld_ls.append([np.mean(pw_ld[pw_dist == dist]) for dist in range(1, 10000, 100)])
 
+    import ipdb;ipdb.set_trace()
+    mean = np.mean(np.vstack(ld_ls), axis=0)
+    se_mean = np.std(np.vstack(ld_ls), ddof=1, axis=0) / np.sqrt(len(ld_ls))
+    return mean
+    
 def get_seg_bewteen(pos, ac1, ac2):
     loc_asc = ac1.is_segregating() & ac2.is_segregating()
     ac1_seg = ac1.compress(loc_asc, axis=0)
