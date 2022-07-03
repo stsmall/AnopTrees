@@ -293,7 +293,7 @@ def main():
     meta_path = args.meta_path
     outfile = args.out_prefix
     nprocs = args.nprocs
-    stats = args.stats_ls
+    stats = args.stats
     if stats == "all":
         stats = ["pi", "theta", "tajd"]
     CHROMS = args.chromosomes
