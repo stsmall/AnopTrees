@@ -167,6 +167,7 @@ def get_equal_windows(accessible, start, stop, size=10000, step=None):
     return allel.equally_accessible_windows(accessible, size, start=start, stop=stop, step=step)
 
 def write_stats(stat, stat_dt, outfile):
+    import ipdb;ipdb.set_trace()
     with open(f"agp3.{stat}.{outfile}.txt", 'w') as f:
         header = f"chromosome\tpopulation\twin_start\twin_stop\t{stat}\tvariants\tbases\n"
         f.write(f"{header}")
@@ -332,7 +333,7 @@ def main():
                 if nprocs > 1:
                     ac_seg = ac_seg.compute()
                     print(ac_seg.shape)
-                    jobs = set_parallel("pi_win", windows, 20, [ac_pos, ac_seg, access_dt[c]])
+                    jobs = set_parallel("pi_win_mp", windows, 20, [ac_pos, ac_seg, access_dt[c]])
                 else:
                     stat, win, bases, vars = stat_fx(ac_pos, ac_seg, access_dt[c], windows)
                     stat_dt[c][pop] = (stat, win, bases, vars)
