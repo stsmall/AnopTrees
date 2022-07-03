@@ -313,7 +313,7 @@ def main():
     chrom_dt = load_phased(CHROMS, meta_path = meta_path, zarr_path=zarr_path)
     chrom_aa_dt = remap_alleles(CHROMS, chrom_dt)
     access_dt = get_accessible(CHROMS)
-    
+    import ipdb;ipdb.set_trace()
     for s in stats:
         stat_dt = defaultdict(dict)
         stat_fx = eval(f"{s}_win")
