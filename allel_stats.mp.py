@@ -274,7 +274,7 @@ def parse_args(args_in):
                         help="outfile_prefix")
     parser.add_argument('-n', "--nprocs", type=int, default=1,
                         help="number of processors")
-    parser.add_argument("--stats", default="all", choices=["pi", "theta", "tajd", "fst", 'dxy', "da", "zx", "ld"], 
+    parser.add_argument("--stats", nargs='+', default="all", choices=["pi", "theta", "tajd", "fst", 'dxy', "da", "zx", "ld"], 
                         help="choose stats")
     parser.add_argument("--pops", type=str, nargs='+', default="all",
                         help="list populations")
