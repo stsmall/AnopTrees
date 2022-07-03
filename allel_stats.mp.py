@@ -168,7 +168,7 @@ def get_equal_windows(accessible, start, stop, size=10000, step=None):
     return allel.equally_accessible_windows(accessible, size, start=start, stop=stop, step=step)
 
 def write_stats(stat, stat_dt, outfile):
-    with open(f"agp3.{stat}.{outfile}.txt", 'w') as f:
+    with open(f"agp3.{outfile}.{stat}.txt", 'w') as f:
         header = f"chromosome\tpopulation\twin_start\twin_stop\t{stat}\tvariants\tbases\n"
         f.write(f"{header}")
         for c in stat_dt:
