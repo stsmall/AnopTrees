@@ -172,7 +172,7 @@ def write_stats(stat, stat_dt, outfile):
         header = f"chromosome\tpopulation\twin_start\twin_stop\t{stat}\tvariants\tbases\n"
         f.write(f"{header}")
         for c in stat_dt:
-            for pop in stat_dt:
+            for pop in stat_dt[c]:
                 for s, w, b, v in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2], stat_dt[c][pop][3]):
                     f.write(f"{c}\t{pop}\t{w[0]}\t{w[1]}\t{s}\t{v}\t{b}\n")
 
