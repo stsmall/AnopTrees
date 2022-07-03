@@ -231,7 +231,7 @@ def ld_win(chrom, dt, pop, id="country", maf=0.10):
     pos = pos.compress(pos_mask)
     gt = gt.compress(pos_mask, axis=0)
     # get ac
-    panel = dt.meta
+    panel = dt[chrom].meta
     idx = panel[panel[f"{id}"] == pop].index.tolist()
     gt = gt.take(idx, axis=1)
     ac = gt.count_alleles(max_allele=1)
