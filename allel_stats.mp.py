@@ -11,7 +11,6 @@
 @Usage   :  python allel_stats.mp.py
 """
 
-
 import sys
 import argparse
 from multiprocessing import Pool
@@ -40,6 +39,8 @@ chrom_lens = {
     "3L": 41_963_435,
     "X": 24_393_108
     }
+
+# TODO: add classes
 
 
 def vcf2zarr(chrom, vcf_path, zarr_path):
@@ -167,7 +168,6 @@ def get_equal_windows(accessible, start, stop, size=10000, step=None):
     return allel.equally_accessible_windows(accessible, size, start=start, stop=stop, step=step)
 
 def write_stats(stat, stat_dt, outfile):
-    import ipdb;ipdb.set_trace()
     with open(f"agp3.{stat}.{outfile}.txt", 'w') as f:
         header = f"chromosome\tpopulation\twin_start\twin_stop\t{stat}\tvariants\tbases\n"
         f.write(f"{header}")
