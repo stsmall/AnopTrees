@@ -258,8 +258,10 @@ def ld_win(chrom, dt, pop, id="country", maf=0.10):
 
     import ipdb;ipdb.set_trace()
     mean = np.mean(np.vstack(ld_ls), axis=0)
-    se_mean = np.std(np.vstack(ld_ls), ddof=1, axis=0) / np.sqrt(len(ld_ls))
-    return mean
+    #se_mean = np.std(np.vstack(ld_ls), ddof=1, axis=0) / np.sqrt(len(ld_ls))
+    lq = np.quantile(np.vstack(ld_ls), axis=0, q=0.0225)
+    hq = np.quantile(np.vstack(ld_ls), axis=0, q=0.975)
+    return (mean, lq, hq)
     
 def get_seg_bewteen(pos, ac1, ac2):
     loc_asc = ac1.is_segregating() & ac2.is_segregating()
