@@ -307,13 +307,13 @@ def main():
     # =================================================================
     #  Main executions
     # =================================================================
-    import ipdb;ipdb.set_trace()
     chrom_dt = load_phased(CHROMS, meta_path = meta_path, zarr_path=zarr_path)
     chrom_aa_dt = remap_alleles(CHROMS, chrom_dt)
     access_dt = get_accessible(CHROMS)
     
     for s in stats:
         stat_dt = defaultdict(dict)
+        import ipdb;ipdb.set_trace()
         stat_fx = getattr(eval(f"{s}_win"), 'stat_fx')
         for c in CHROMS:
             if pops == 'all':
