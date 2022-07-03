@@ -204,11 +204,11 @@ def tajd_win(pos, ac, accessible, windows):
 
 def pi_win(pos, ac, accessible, windows):
     import ipdb;ipdb.set_trace()
-    pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible = accessible)
+    pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible=accessible)
     return pi, win, bases, vars
 
 def theta_win(pos, ac, accessible, windows):
-    theta, win, bases, vars = allel.windowed_watterson_theta(pos, ac, windows=windows, is_accessible = accessible)
+    theta, win, bases, vars = allel.windowed_watterson_theta(pos, ac, windows=windows, is_accessible=accessible)
     return theta, win, bases, vars
 
 def ld_win(chrom, dt, pop=None, id="country", maf=0.10):
@@ -335,7 +335,7 @@ def main():
                     print(ac_seg.shape)
                     jobs = set_parallel("pi_win", windows, 20, [ac_pos, ac_seg, access_dt[c]])
                 else:
-                    stat, win, bases, vars = stat_fx(ac_pos, ac_seg, windows, access_dt[c])
+                    stat, win, bases, vars = stat_fx(ac_pos, ac_seg, access_dt[c], windows)
                     stat_dt[c][pop] = (stat, win, bases, vars)
         write_stats(s, stat_dt, outfile)
 
