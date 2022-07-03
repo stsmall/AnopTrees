@@ -135,12 +135,9 @@ def remap_alleles(CHROMS, chrom_dt):
         chrom_aa_dt[c] = AllelDataAA(panel, gt_aa, pos, cond)
     return chrom_aa_dt
 
-def get_accessible(chroms):
-    f = np.load("agp3.accessible_pos.txt.npz")
-    access_dt = {}
-    for c in chroms:
-        access_dt[c] = f[f"access_{c}"]
-    return access_dt
+def get_accessible(chroms, access_path):
+    file = np.load(access_path)
+    return {c: file[f"access_{c}"] for c in chroms}
 
 from dataclasses import dataclass
 @dataclass
@@ -310,6 +307,7 @@ def parse_args(args_in):
     parser = argparse.ArgumentParser(prog=sys.argv[0], formatter_class=prog)
     parser.add_argument("zarr_path", help="zarr_path")
     parser.add_argument("meta_path", help="meta_path")
+    parser.add_argument("access_path", help="access_path")
     parser.add_argument("--out_prefix", type=str, default=None,
                         help="outfile_prefix")
     parser.add_argument('-n', "--nprocs", type=int, default=1,
@@ -333,6 +331,7 @@ def main():
     args = parse_args(sys.argv[1:])
     zarr_path = args.zarr_path
     meta_path = args.meta_path
+    access_path = args.access_path
     outfile = args.out_prefix
     nprocs = args.nprocs
     win_size = args.window_size
@@ -352,7 +351,7 @@ def main():
     # =================================================================
     chrom_dt = load_phased(CHROMS, meta_path = meta_path, zarr_path=zarr_path)
     chrom_aa_dt = remap_alleles(CHROMS, chrom_dt)
-    access_dt = get_accessible(CHROMS)
+    access_dt = get_accessible(CHROMS, access_path)
     for s in stats:
         stat_dt = defaultdict(dict)
         if s in ["pi", "theta", "tajd"]:
