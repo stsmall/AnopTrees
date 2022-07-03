@@ -162,13 +162,13 @@ def get_windows(pos, start, stop, size=10000, step=None):
 def get_equal_windows(accessible, start, stop, size=10000, step=None):
     return allel.equally_accessible_windows(accessible, size, start=start, stop=stop, step=step)
 
-def write_stats(stat):
-    with open(f"agp3.{stat}.txt", 'w') as f:
+def write_stats(stat, stat_dt, outfile):
+    with open(f"agp3.{stat}.{outfile}.txt", 'w') as f:
         header = f"chromosome\tpopulation\twin_start\twin_stop\t{stat}\tvariants\tbases\n"
         f.write(f"{header}")
-        for c in eval(f"{stat}_dt"):
-            for pop in eval(f"{stat}_dt")[c]:
-                for s, w, b, v in zip(eval(f"{stat}_dt")[c][pop][0], eval(f"{stat}_dt")[c][pop][1], eval(f"{stat}_dt")[c][pop][2], eval(f"{stat}_dt")[c][pop][3]):
+        for c in stat_dt:
+            for pop in stat_dt:
+                for s, w, b, v in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2], stat_dt[c][pop][3]):
                     f.write(f"{c}\t{pop}\t{w[0]}\t{w[1]}\t{s}\t{v}\t{b}\n")
 
 def get_ac(dt, pop=None, id="country"):
@@ -198,7 +198,7 @@ def tajd_win(pos, ac, accessible, windows):
     bases = [accessible[s:e].sum() for s, e, in win]
     return tajd, win, bases, vars
 
-def pi_win2(pos, ac, accessible, windows):
+def pi_win(pos, ac, accessible, windows):
     pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible = accessible)
     return pi, win, bases, vars
 
@@ -244,7 +244,7 @@ def ld_win(chrom, dt, pop=None, id="country", maf=0.10):
     return ld_ls
 
 #TODO: let's figure out this MP
-def pi_win(args_ls):
+def pi_win_mp(args_ls):
     pos, ac, accessible, windows = args_ls
     pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible=accessible)
     return pi #, win, bases, vars
@@ -258,7 +258,7 @@ def set_parallel(func, windows, nprocs, args):
     # start job queue
     for win in win_chunks:
         args_ls = tuple(args + [win,])
-        job = pool.apply_async(pi_win, args=args_ls)
+        job = pool.apply_async(pi_win_mp, args=args_ls)
     pool.close()
     pool.join()
     return job
@@ -270,7 +270,7 @@ def parse_args(args_in):
     parser = argparse.ArgumentParser(prog=sys.argv[0], formatter_class=prog)
     parser.add_argument("zarr_path", help="zarr_path")
     parser.add_argument("meta_path", help="meta_path")
-    parser.add_argument("--out_prefix", required=True, type=str,
+    parser.add_argument("--out_prefix", type=str, default=None,
                         help="outfile_prefix")
     parser.add_argument('-n', "--nprocs", type=int, default=1,
                         help="number of processors")
@@ -292,32 +292,46 @@ def main():
     zarr_path = args.zarr_path
     meta_path = args.meta_path
     outfile = args.out_prefix
-    stats = args.stats_ls 
+    nprocs = args.nprocs
+    stats = args.stats_ls
+    if stats == "all":
+        stats = ["pi", "theta", "tajd"]
     CHROMS = args.chromosomes
     pops = args.pops
+    if CHROMS == "all":
+        CHROMS = ["2R", "2L", "3R", "3L", "X"]
+    if not outfile:
+        c = 'all' if args.chromosomes == "all" else "_".join(CHROMS)
+        p = 'all' if pops == 'all' else "_".join(pops)
+        outfile = f"{c}_{p}"    
     # =================================================================
     #  Main executions
     # =================================================================
-    chrom_dt = load_phased(CHROMS, meta_path = "../../An_gambiae.meta.csv", zarr_path="../../AgamP3.phased.zarr")
+    import ipdb;ipdb.set_trace()
+    chrom_dt = load_phased(CHROMS, meta_path = meta_path, zarr_path=zarr_path)
     chrom_aa_dt = remap_alleles(CHROMS, chrom_dt)
     access_dt = get_accessible(CHROMS)
-    CHROMS = ["2R", "2L", "3R", "3L", "X"]
-    pi_dt = defaultdict(dict)
-    for c in ["2R"]:
-        sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
-        pops = sample_size.index[(sample_size >= 10).values].to_list()
-        ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
-        windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=10000, step=None)
-        for pop in ["Cameroon"]:
-            ac = ac_subpops[pop]
-            ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
-            ac_seg = ac_seg.compute()
-            import ipdb;ipdb.set_trace()
-            print(ac_seg.shape)
-            jobs = set_parallel("pi_win", windows, 20, [ac_pos, ac_seg, access_dt[f"access_{c}"]])
-            import ipdb;ipdb.set_trace()
-            #pi, win, bases, vars = pi_win(ac_pos, ac_seg, windows, access_dt[c])
-            #pi_dt[c][pop] = (pi, win, bases, vars)
+    
+    for s in stats:
+        stat_dt = defaultdict(dict)
+        stat_fx = getattr(eval(f"{s}_win"), 'stat_fx')
+        for c in CHROMS:
+            if pops == 'all':
+                sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
+                pops = sample_size.index[(sample_size >= 10).values].to_list()
+            ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
+            windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=10000, step=None)
+            for pop in pops:
+                ac = ac_subpops[pop]
+                ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
+                if nprocs > 1:
+                    ac_seg = ac_seg.compute()
+                    print(ac_seg.shape)
+                    jobs = set_parallel("pi_win", windows, 20, [ac_pos, ac_seg, access_dt[f"access_{c}"]])
+                else:
+                    stat, win, bases, vars = stat_fx(ac_pos, ac_seg, windows, access_dt[c])
+                    stat_dt[c][pop] = (stat, win, bases, vars)
+        write_stats(s, stat_dt, outfile)
 
 if __name__ == "__main__":
     main()
