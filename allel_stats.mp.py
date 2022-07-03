@@ -280,6 +280,8 @@ def parse_args(args_in):
                         help="list populations")
     parser.add_argument("--chromosomes", type=str, nargs='+', default='all',
                         help="list chromosomes")
+    parser.add_argument("--win_size", type=int, default=10_000,
+                        help="window size")
     return parser.parse_args(args_in)
 
 
@@ -293,6 +295,7 @@ def main():
     meta_path = args.meta_path
     outfile = args.out_prefix
     nprocs = args.nprocs
+    win_size = args.window_size
     stats = args.stats
     if stats == "all":
         stats = ["pi", "theta", "tajd"]
@@ -313,14 +316,13 @@ def main():
     
     for s in stats:
         stat_dt = defaultdict(dict)
-        import ipdb;ipdb.set_trace()
         stat_fx = eval(f"{s}_win")
         for c in CHROMS:
             if pops == 'all':
                 sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
                 pops = sample_size.index[(sample_size >= 10).values].to_list()
             ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
-            windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=10000, step=None)
+            windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
             for pop in pops:
                 ac = ac_subpops[pop]
                 ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
@@ -329,7 +331,7 @@ def main():
                     print(ac_seg.shape)
                     jobs = set_parallel("pi_win", windows, 20, [ac_pos, ac_seg, access_dt[f"access_{c}"]])
                 else:
-                    stat, win, bases, vars = stat_fx(ac_pos, ac_seg, windows, access_dt[c])
+                    stat, win, bases, vars = stat_fx(ac_pos, ac_seg, windows, access_dt[f"access_{c}"])
                     stat_dt[c][pop] = (stat, win, bases, vars)
         write_stats(s, stat_dt, outfile)
 
