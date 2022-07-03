@@ -280,7 +280,7 @@ def parse_args(args_in):
                         help="list populations")
     parser.add_argument("--chromosomes", type=str, nargs='+', default='all',
                         help="list chromosomes")
-    parser.add_argument("--win_size", type=int, default=10_000,
+    parser.add_argument("--window_size", type=int, default=10_000,
                         help="window size")
     return parser.parse_args(args_in)
 
