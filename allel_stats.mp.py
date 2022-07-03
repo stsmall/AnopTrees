@@ -179,12 +179,12 @@ def write_stats(stat, stat_dt, outfile):
 
 def write_stats_ld(stat_dt, outfile):
     with open(f"agp3.{outfile}.ld.txt", 'w') as f:
-        header = f"chromosome\tpopulation\tdist_bp\tmean_D\tse_D\n"
+        header = f"chromosome\tpopulation\tdist_bp\tmean_D\tlower_D\tupper_D\n"
         f.write(f"{header}")
         dist = list(range(1, 10000, 100))
         for c in stat_dt:
             for pop in stat_dt[c]:
-                for d, m, e in zip(dist, stat_dt[c][pop][1], stat_dt[c][pop][2]):
+                for d, m, e in zip(dist, stat_dt[c][pop][0][0], stat_dt[c][pop][0][1], stat_dt[c][pop][0][2]):
                     f.write(f"{c}\t{pop}\t{d}\t{m}\t{e}\n")
 
 def get_ac(dt, pop=None, id="country"):
