@@ -203,7 +203,6 @@ def tajd_win(pos, ac, accessible, windows):
     return tajd, win, bases, vars
 
 def pi_win(pos, ac, accessible, windows):
-    import ipdb;ipdb.set_trace()
     pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible=accessible)
     return pi, win, bases, vars
 
