@@ -11,6 +11,8 @@
 @Usage   :  python allel_stats.mp.py
 """
 
+#TODO: clean up imports
+
 import sys
 import argparse
 from multiprocessing import Pool
@@ -223,9 +225,9 @@ def ld_win(chrom, dt, pop, id="country", maf=0.10):
     # corrected - 1/n, where n is sampled chroms
     if chrom not in ["3R", "3L"]:
         return None
-    pos = dt.pos
-    gt = dt.gt
-    pos_mask = dt.pos < 37_000_00 if chrom == "3R" else ((dt.pos > 15_000_000) & (dt.pos < 41_000_000))
+    pos = dt[chrom].pos
+    gt = dt[chrom].gt
+    pos_mask = dt[chrom].pos < 37_000_00 if chrom == "3R" else ((dt[chrom].pos > 15_000_000) & (dt[chrom].pos < 41_000_000))
     pos = pos.compress(pos_mask)
     gt = gt.compress(pos_mask, axis=0)
     # get ac
