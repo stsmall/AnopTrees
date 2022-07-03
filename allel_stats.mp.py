@@ -6,32 +6,21 @@
 @Version :  1.0
 @Contact :  stsmall@gmail.com
 @License :  Released under MIT License Copyright (c) 2022 Scott T. Small
-@Desc    :  None
-@Notes   :  None
+@Desc    :  Calculate various popgen stats using scikit-allel and dask chunking
+@Notes   :  Slow runtimes forces a perl parallel usage, but DASK seems to consume all processors
 @Usage   :  python allel_stats.mp.py
 """
 
-#TODO: clean up imports
-
-import sys
 import argparse
-from multiprocessing import Pool
-import pickle
-from collections import Counter, defaultdict
+import sys
+from collections import defaultdict
 from itertools import combinations
-from termios import NL1
-# analyses
+
 import allel
-import scipy.spatial as ssp
 import moments.LD as mold
-# data
-import dask
-import dask.array as da
-dask.config.set(**{'array.slicing.split_large_chunks': True})
-import numcodecs
 import numpy as np
 import pandas as pd
-import xarray as xr
+import scipy.spatial as ssp
 import zarr
 
 # globals
@@ -44,15 +33,6 @@ chrom_lens = {
     }
 
 # TODO: add classes
-
-
-def vcf2zarr(chrom, vcf_path, zarr_path):
-    allel.vcf_to_zarr(vcf_path, zarr_path, group=chrom, fields='*', alt_number=3, log=sys.stdout,compressor=numcodecs.Blosc(cname='zstd', clevel=1, shuffle=False))
-
-def load_data(file):
-    with open(file, 'rb') as handle:
-        dt = pickle.load(handle)
-    return dt
 
 def check_order(panel, samples):
     if np.all(samples == panel['sample_id'].values):
@@ -142,12 +122,14 @@ def get_accessible(chroms, access_path):
     return {c: file[f"access_{c}"] for c in chroms}
 
 from dataclasses import dataclass
+
+
 @dataclass
 class AllelData:
     __slots__ = ["meta", "gt", "pos", "ref", "alt", "aa", "cond"]
     meta: pd.DataFrame
-    gt: list
-    pos: list
+    gt: allel.GenotypeDaskArray
+    pos: allel.SortedIndex
     ref: list
     alt: list
     aa: list
@@ -157,8 +139,8 @@ class AllelData:
 class AllelDataAA:
     __slots__ = ["meta", "gt", "pos", "cond"]
     meta: pd.DataFrame
-    gt: list
-    pos: list
+    gt: allel.GenotypeDaskArray
+    pos: allel.SortedIndex
     cond: list
 
 def get_windows(pos, start, stop, size=10000, step=None):
@@ -182,10 +164,9 @@ def write_stats_ld(stat_dt, outfile):
         header = f"chromosome\tpopulation\tdist_bp\tmean_D\tlower_D\tupper_D\n"
         f.write(f"{header}")
         dist = list(range(1, 10000, 100))
-        import ipdb;ipdb.set_trace()
         for c in stat_dt:
             for pop in stat_dt[c]:
-                for d, m, l, h in zip(dist, stat_dt[c][pop][0][0], stat_dt[c][pop][0][1], stat_dt[c][pop][0][2]):
+                for d, m, l, h in zip(dist, stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2]):
                     f.write(f"{c}\t{pop}\t{d}\t{m}\t{l}\t{h}\n")
 
 def get_ac(dt, pop=None, id="country"):
@@ -396,31 +377,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-'''
-#TODO: let's figure out this MP
-def pi_win_mp(args_ls):
-    pos, ac, accessible, windows = args_ls
-    pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible=accessible)
-    return pi #, win, bases, vars
-
-def set_parallel(func, windows, nprocs, args):
-    nprocs = nprocs
-    pool = Pool(nprocs)
-    # set chunks
-    nk = nprocs * 10
-    win_chunks = [windows[i:i + nk] for i in range(0, len(windows), nk)]
-    # start job queue
-    for win in win_chunks:
-        args_ls = tuple(args + [win,])
-        job = pool.apply_async(pi_win_mp, args=args_ls)
-    pool.close()
-    pool.join()
-    return job
-
-if nprocs > 1:
-    ac_seg = ac_seg.compute()
-    print(ac_seg.shape)
-    jobs = set_parallel("pi_win_mp", windows, 20, [ac_pos, ac_seg, access_dt[c]])
-else:
-'''
