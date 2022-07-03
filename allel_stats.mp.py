@@ -17,6 +17,7 @@ from multiprocessing import Pool
 import pickle
 from collections import Counter, defaultdict
 from itertools import combinations
+from termios import NL1
 # analyses
 import allel
 import scipy.spatial as ssp
@@ -168,13 +169,23 @@ def get_equal_windows(accessible, start, stop, size=10000, step=None):
     return allel.equally_accessible_windows(accessible, size, start=start, stop=stop, step=step)
 
 def write_stats(stat, stat_dt, outfile):
+    n1 = "avg_pi" if stat == "da" else "bases"
     with open(f"agp3.{outfile}.{stat}.txt", 'w') as f:
-        header = f"chromosome\tpopulation\twin_start\twin_stop\t{stat}\tvariants\tbases\n"
+        header = f"chromosome\tpopulation\twin_start\twin_stop\t{stat}\t{n1}\tvariants\n"
         f.write(f"{header}")
         for c in stat_dt:
             for pop in stat_dt[c]:
                 for s, w, b, v in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2], stat_dt[c][pop][3]):
-                    f.write(f"{c}\t{pop}\t{w[0]}\t{w[1]}\t{s}\t{v}\t{b}\n")
+                    f.write(f"{c}\t{pop}\t{w[0]}\t{w[1]}\t{s}\t{b}\t{v}\n")
+
+def write_stats_ld(stat_dt, outfile):
+    with open(f"agp3.{outfile}.ld.txt", 'w') as f:
+        header = f"chromosome\tpopulation\tdist_bp\tmean_D\tse_D\n"
+        f.write(f"{header}")
+        for c in stat_dt:
+            for pop in stat_dt[c]:
+                for d, m, e in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2]):
+                    f.write(f"{c}\t{pop}\t{d}\t{m}\t{e}\n")
 
 def get_ac(dt, pop=None, id="country"):
     # dt is an AllelData obj
@@ -246,28 +257,52 @@ def ld_win(chrom, dt, pop=None, id="country", maf=0.10):
         ld_ls.append([(dist, np.mean(pw_ld[pw_dist == dist])) for dist in range(1, 10000, 100)])
     # TODO: stack and take mean across distances
     #ld = np.mean(ld_ls, axis=1)
+    import ipdb;ipdb.set_trace()
     return ld_ls
 
-#TODO: let's figure out this MP
-def pi_win_mp(args_ls):
-    pos, ac, accessible, windows = args_ls
-    pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible=accessible)
-    return pi #, win, bases, vars
+def get_seg_bewteen(pos, ac1, ac2):
+    loc_asc = ac1.is_segregating() & ac2.is_segregating()
+    ac1_seg = ac1.compress(loc_asc, axis=0)
+    ac2_seg = ac2.compress(loc_asc, axis=0)
+    pos_s = pos.compress(loc_asc)
+    return pos_s, ac1_seg, ac2_seg
 
-def set_parallel(func, windows, nprocs, args):
-    nprocs = nprocs
-    pool = Pool(nprocs)
-    # set chunks
-    nk = nprocs * 10
-    win_chunks = [windows[i:i + nk] for i in range(0, len(windows), nk)]
-    # start job queue
-    for win in win_chunks:
-        args_ls = tuple(args + [win,])
-        job = pool.apply_async(pi_win_mp, args=args_ls)
-    pool.close()
-    pool.join()
-    return job
+def da_win(pos, ac1, ac2, accessible, windows, da=True):
+    dxy, win, bases, counts = allel.windowed_divergence(pos, ac1, ac2, windows=windows, is_accessible=accessible)
+    pi, win, bases, vars = pi_win(pos, (ac1+ac2), accessible, windows)
+    da = dxy - pi
+    return da, win, pi, vars
 
+def dxy_win(pos, ac1, ac2, accessible, windows, da=False):
+    dxy, win, bases, counts = allel.windowed_divergence(pos, ac1, ac2, windows=windows, is_accessible=accessible)
+    if da:
+        pi, win, bases, vars = pi_win(pos, (ac1+ac2), accessible, windows)
+        da = dxy - pi
+        return da, win, pi, vars
+    return dxy, win, bases, counts
+
+def fst_weir(dt, chrom_len, pops_ls, win_size=10000):
+    panel = dt.meta
+    subpops = {sub:panel[panel[f"{id}"] == sub].index.tolist() for sub in pops_ls}
+    fst, win, counts = allel.windowed_weir_cockerham_fst(dt.pos, dt.gt, subpops, size=win_size, start=1, stop=chrom_len)
+    #bases = [accessible[s:e].sum() for s, e, in win]
+    #return fst, win, bases, counts
+
+def fst_win(pos, ac1, ac2, accessible, windows, fst_algo='hudson'):
+    if fst_algo == 'hudson':
+        fst, win, counts = allel.windowed_hudson_fst(pos, ac1, ac2, windows=windows)
+    elif fst_algo == 'patterson':
+        fst, win, counts = allel.windowed_patterson_fst(pos, ac1, ac2, windows=windows)
+    else:
+        "FST algorithm not recognized, check keyword spelling"
+        return None
+    bases = [accessible[s:e].sum() for s, e, in win]
+    return fst, win, bases, counts
+
+def zxy_win(daf=0.10):
+    ...
+    # z_x = (z_s1 + z_s2)/(2*z_all)
+    # in windows along the genome ... so need to calculate all pair-wise comparisons, then all at the end
 
 def parse_args(args_in):
     """Parse args."""
@@ -303,7 +338,7 @@ def main():
     win_size = args.window_size
     stats = args.stats
     if stats == "all":
-        stats = ["pi", "theta", "tajd"]
+        stats = ["pi", "theta", "tajd", "ld", "fst", "dxy", "da", "zx"]
     CHROMS = args.chromosomes
     pops = args.pops
     if CHROMS == "all":
@@ -320,24 +355,69 @@ def main():
     access_dt = get_accessible(CHROMS)
     for s in stats:
         stat_dt = defaultdict(dict)
-        stat_fx = eval(f"{s}_win")
-        for c in CHROMS:
-            if pops == 'all':
-                sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
-                pops = sample_size.index[(sample_size >= 10).values].to_list()
-            ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
-            windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
-            for pop in pops:
-                ac = ac_subpops[pop]
-                ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
-                if nprocs > 1:
-                    ac_seg = ac_seg.compute()
-                    print(ac_seg.shape)
-                    jobs = set_parallel("pi_win_mp", windows, 20, [ac_pos, ac_seg, access_dt[c]])
-                else:
+        if s in ["pi", "theta", "tajd"]:
+            stat_fx = eval(f"{s}_win")
+            for c in CHROMS:
+                if pops == 'all':
+                    sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
+                    pops = sample_size.index[(sample_size >= 10).values].to_list()
+                windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
+                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
+                for pop in pops:
+                    ac = ac_subpops[pop]
+                    ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
                     stat, win, bases, vars = stat_fx(ac_pos, ac_seg, access_dt[c], windows)
                     stat_dt[c][pop] = (stat, win, bases, vars)
-        write_stats(s, stat_dt, outfile)
+            write_stats(s, stat_dt, outfile)
+        elif s == "ld":
+            for c in CHROMS:
+                if pops == 'all':
+                    sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
+                    pops = sample_size.index[(sample_size >= 10).values].to_list()
+                for pop in pops:
+                    stat_dt[c][pop] = ld_win(c, chrom_aa_dt, pop)
+            write_stats_ld(stat_dt, outfile)
+        elif s in ["fst", "dxy", "da"]:
+            stat_fx = eval(f"{s}_win")
+            for c in CHROMS:
+                if pops == 'all':
+                    sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
+                    pops = sample_size.index[(sample_size >= 10).values].to_list()
+                windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
+                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
+                for p1, p2 in combinations(pops, 2):
+                    p, ac1, ac2 = get_seg_bewteen(chrom_aa_dt[c].pos, ac_subpops[p1], ac_subpops[p2])                  
+                    stat, win, bases, counts = stat_fx(p, ac1, ac2, access_dt[c], windows)
+                    stat_dt[c][f"{p1}-{p2}"] = (stat, win, bases, counts)
+            write_stats(s, stat_dt, outfile)
 
 if __name__ == "__main__":
     main()
+
+'''
+#TODO: let's figure out this MP
+def pi_win_mp(args_ls):
+    pos, ac, accessible, windows = args_ls
+    pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible=accessible)
+    return pi #, win, bases, vars
+
+def set_parallel(func, windows, nprocs, args):
+    nprocs = nprocs
+    pool = Pool(nprocs)
+    # set chunks
+    nk = nprocs * 10
+    win_chunks = [windows[i:i + nk] for i in range(0, len(windows), nk)]
+    # start job queue
+    for win in win_chunks:
+        args_ls = tuple(args + [win,])
+        job = pool.apply_async(pi_win_mp, args=args_ls)
+    pool.close()
+    pool.join()
+    return job
+
+if nprocs > 1:
+    ac_seg = ac_seg.compute()
+    print(ac_seg.shape)
+    jobs = set_parallel("pi_win_mp", windows, 20, [ac_pos, ac_seg, access_dt[c]])
+else:
+'''
