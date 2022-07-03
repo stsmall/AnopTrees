@@ -182,10 +182,11 @@ def write_stats_ld(stat_dt, outfile):
         header = f"chromosome\tpopulation\tdist_bp\tmean_D\tlower_D\tupper_D\n"
         f.write(f"{header}")
         dist = list(range(1, 10000, 100))
+        import ipdb;ipdb.set_trace()
         for c in stat_dt:
             for pop in stat_dt[c]:
-                for d, m, e in zip(dist, stat_dt[c][pop][0][0], stat_dt[c][pop][0][1], stat_dt[c][pop][0][2]):
-                    f.write(f"{c}\t{pop}\t{d}\t{m}\t{e}\n")
+                for d, m, l, h in zip(dist, stat_dt[c][pop][0][0], stat_dt[c][pop][0][1], stat_dt[c][pop][0][2]):
+                    f.write(f"{c}\t{pop}\t{d}\t{m}\t{l}\t{h}\n")
 
 def get_ac(dt, pop=None, id="country"):
     # dt is an AllelData obj
@@ -255,13 +256,10 @@ def ld_win(chrom, dt, pop, id="country", maf=0.10):
         pw_dist = ssp.distance.pdist(c2, 'cityblock')
         pw_ld = mold.Parsing.compute_pairwise_stats(gn)[0]
         ld_ls.append([np.mean(pw_ld[pw_dist == dist]) for dist in range(1, 10000, 100)])
-
-    import ipdb;ipdb.set_trace()
-    mean = np.mean(np.vstack(ld_ls), axis=0)
-    #se_mean = np.std(np.vstack(ld_ls), ddof=1, axis=0) / np.sqrt(len(ld_ls))
-    lq = np.quantile(np.vstack(ld_ls), axis=0, q=0.0225)
-    hq = np.quantile(np.vstack(ld_ls), axis=0, q=0.975)
-    return (mean, lq, hq)
+    med = np.nanmedian(np.vstack(ld_ls), axis=0)
+    lq = np.nanquantile(np.vstack(ld_ls), axis=0, q=0.025)
+    hq = np.nanquantile(np.vstack(ld_ls), axis=0, q=0.95)
+    return (med, lq, hq)
     
 def get_seg_bewteen(pos, ac1, ac2):
     loc_asc = ac1.is_segregating() & ac2.is_segregating()
