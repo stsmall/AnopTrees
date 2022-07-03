@@ -222,7 +222,7 @@ def theta_win(pos, ac, accessible, windows):
     theta, win, bases, vars = allel.windowed_watterson_theta(pos, ac, windows=windows, is_accessible=accessible)
     return theta, win, bases, vars
 
-def ld_win(chrom, dt, pop=None, id="country", maf=0.10):
+def ld_win(chrom, dt, pop, id="country", maf=0.10):
     # corrected - 1/n, where n is sampled chroms
     if chrom not in ["3R", "3L"]:
         return None
