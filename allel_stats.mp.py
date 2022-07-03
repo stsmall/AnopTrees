@@ -134,7 +134,11 @@ def remap_alleles(CHROMS, chrom_dt):
     return chrom_aa_dt
 
 def get_accessible(chroms):
-    return np.load("agp3.accessible_pos.txt.npz")
+    f = np.load("agp3.accessible_pos.txt.npz")
+    access_dt = {}
+    for c in chroms:
+        access_dt[c] = f[f"access_{c}"]
+    return access_dt
 
 from dataclasses import dataclass
 @dataclass
@@ -199,6 +203,7 @@ def tajd_win(pos, ac, accessible, windows):
     return tajd, win, bases, vars
 
 def pi_win(pos, ac, accessible, windows):
+    import ipdb;ipdb.set_trace()
     pi, win, bases, vars = allel.windowed_diversity(pos, ac, windows=windows, is_accessible = accessible)
     return pi, win, bases, vars
 
@@ -313,7 +318,6 @@ def main():
     chrom_dt = load_phased(CHROMS, meta_path = meta_path, zarr_path=zarr_path)
     chrom_aa_dt = remap_alleles(CHROMS, chrom_dt)
     access_dt = get_accessible(CHROMS)
-    import ipdb;ipdb.set_trace()
     for s in stats:
         stat_dt = defaultdict(dict)
         stat_fx = eval(f"{s}_win")
@@ -329,9 +333,9 @@ def main():
                 if nprocs > 1:
                     ac_seg = ac_seg.compute()
                     print(ac_seg.shape)
-                    jobs = set_parallel("pi_win", windows, 20, [ac_pos, ac_seg, access_dt[f"access_{c}"]])
+                    jobs = set_parallel("pi_win", windows, 20, [ac_pos, ac_seg, access_dt[c]])
                 else:
-                    stat, win, bases, vars = stat_fx(ac_pos, ac_seg, windows, access_dt[f"access_{c}"])
+                    stat, win, bases, vars = stat_fx(ac_pos, ac_seg, windows, access_dt[c])
                     stat_dt[c][pop] = (stat, win, bases, vars)
         write_stats(s, stat_dt, outfile)
 
