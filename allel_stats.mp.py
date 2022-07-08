@@ -235,6 +235,7 @@ def ld_win(chrom, dt, pop, id="country", decay=True, maf=0.10, r_min=1, r_max=10
     # minor allele freq filter
     mac_filt = ac[:, :2].min(axis=1) > (maf * 2*len(idx))
     pos = pos.compress(mac_filt)
+    import ipdb; ipdb.set_trace
     gt = gt.compress(mac_filt, axis=0).compute(num_workers=workers)
     wins = get_windows(pos, start_c, end_c, size=100000, step=None)
     ld_ls = []
