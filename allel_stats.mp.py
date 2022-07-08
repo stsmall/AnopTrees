@@ -163,7 +163,7 @@ def write_stats(stat, stat_dt, outfile):
 
 def write_stats_zx(stat_dt, outfile):
     with open(f"agp3.{outfile}.zx.txt", 'w') as f:
-        header = f"chromosome\tpopulation\twin_start\twin_stop\tz1\tz2\tzx\n"
+        header = f"chromosome\tpopulation\twin_start\twin_stop\tzx\tz1\tz2\n"
         f.write(f"{header}")
         for c in stat_dt:
             for pop in stat_dt[c]:
