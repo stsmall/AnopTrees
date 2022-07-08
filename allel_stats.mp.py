@@ -183,7 +183,8 @@ def get_ac_subpops(dt, pops_ls, id="country"):
     # pop_ls : list of pop names
     panel = dt.meta
     subpops = {sub:panel[panel[f"{id}"] == sub].index.tolist() for sub in pops_ls}
-    return dt.gt.count_alleles_subpops(subpops, max_allele=1).compute(num_workers=workers)
+    gt = dt.gt
+    return gt.count_alleles_subpops(subpops, max_allele=1).compute(num_workers=workers)
 
 def get_seg(pos, ac):
     loc_asc = ac.is_segregating()
