@@ -22,6 +22,10 @@ import numpy as np
 import pandas as pd
 import scipy.spatial as ssp
 import zarr
+import dask
+
+from dask.diagnostics.progress import ProgressBar
+dask.config.set(**{'array.slicing.split_large_chunks': True})
 
 # globals
 chrom_lens = {
@@ -183,9 +187,8 @@ def get_ac_subpops(dt, pops_ls, id="country"):
     # pop_ls : list of pop names
     panel = dt.meta
     subpops = {sub:panel[panel[f"{id}"] == sub].index.tolist() for sub in pops_ls}
-    import ipdb; ipdb.set_trace()
-    gt = dt.gt
-    return gt.count_alleles_subpops(subpops, max_allele=1).compute(num_workers=workers)
+    gt = dt.gt.compute(num_workers=workers)
+    return gt.count_alleles_subpops(subpops, max_allele=1)
 
 def get_seg(pos, ac):
     loc_asc = ac.is_segregating()
@@ -337,46 +340,47 @@ def main():
     # =================================================================
     #  Main executions
     # =================================================================
-    chrom_dt = load_phased(CHROMS, meta_path = meta_path, zarr_path=zarr_path)
-    chrom_aa_dt = remap_alleles(CHROMS, chrom_dt)
-    access_dt = get_accessible(CHROMS, access_path)
-    for s in stats:
-        stat_dt = defaultdict(dict)
-        if s in ["pi", "theta", "tajd"]:
-            stat_fx = eval(f"{s}_win")
-            for c in CHROMS:
-                if pops == 'all':
-                    sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
-                    pops = sample_size.index[(sample_size >= 10).values].to_list()
-                windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
-                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
-                for pop in pops:
-                    ac = ac_subpops[pop]
-                    ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
-                    stat, win, bases, vars = stat_fx(ac_pos, ac_seg, access_dt[c], windows)
-                    stat_dt[c][pop] = (stat, win, bases, vars)
-            write_stats(s, stat_dt, outfile)
-        elif s == "ld":
-            for c in CHROMS:
-                if pops == 'all':
-                    sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
-                    pops = sample_size.index[(sample_size >= 10).values].to_list()
-                for pop in pops:
-                    stat_dt[c][pop] = ld_win(c, chrom_aa_dt, pop)
-            write_stats_ld(stat_dt, outfile)
-        elif s in ["fst", "dxy", "da"]:
-            stat_fx = eval(f"{s}_win")
-            for c in CHROMS:
-                if pops == 'all':
-                    sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
-                    pops = sample_size.index[(sample_size >= 10).values].to_list()
-                windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
-                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
-                for p1, p2 in combinations(pops, 2):
-                    p, ac1, ac2 = get_seg_bewteen(chrom_aa_dt[c].pos, ac_subpops[p1], ac_subpops[p2])                  
-                    stat, win, bases, counts = stat_fx(p, ac1, ac2, access_dt[c], windows)
-                    stat_dt[c][f"{p1}-{p2}"] = (stat, win, bases, counts)
-            write_stats(s, stat_dt, outfile)
+    with ProgressBar():
+        chrom_dt = load_phased(CHROMS, meta_path = meta_path, zarr_path=zarr_path)
+        chrom_aa_dt = remap_alleles(CHROMS, chrom_dt)
+        access_dt = get_accessible(CHROMS, access_path)
+        for s in stats:
+            stat_dt = defaultdict(dict)
+            if s in ["pi", "theta", "tajd"]:
+                stat_fx = eval(f"{s}_win")
+                for c in CHROMS:
+                    if pops == 'all':
+                        sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
+                        pops = sample_size.index[(sample_size >= 10).values].to_list()
+                    windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
+                    ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
+                    for pop in pops:
+                        ac = ac_subpops[pop]
+                        ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
+                        stat, win, bases, vars = stat_fx(ac_pos, ac_seg, access_dt[c], windows)
+                        stat_dt[c][pop] = (stat, win, bases, vars)
+                write_stats(s, stat_dt, outfile)
+            elif s == "ld":
+                for c in CHROMS:
+                    if pops == 'all':
+                        sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
+                        pops = sample_size.index[(sample_size >= 10).values].to_list()
+                    for pop in pops:
+                        stat_dt[c][pop] = ld_win(c, chrom_aa_dt, pop)
+                write_stats_ld(stat_dt, outfile)
+            elif s in ["fst", "dxy", "da"]:
+                stat_fx = eval(f"{s}_win")
+                for c in CHROMS:
+                    if pops == 'all':
+                        sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
+                        pops = sample_size.index[(sample_size >= 10).values].to_list()
+                    windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
+                    ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
+                    for p1, p2 in combinations(pops, 2):
+                        p, ac1, ac2 = get_seg_bewteen(chrom_aa_dt[c].pos, ac_subpops[p1], ac_subpops[p2])                  
+                        stat, win, bases, counts = stat_fx(p, ac1, ac2, access_dt[c], windows)
+                        stat_dt[c][f"{p1}-{p2}"] = (stat, win, bases, counts)
+                write_stats(s, stat_dt, outfile)
 
 if __name__ == "__main__":
     main()
