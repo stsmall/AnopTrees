@@ -305,12 +305,12 @@ def zxy_win(dt, pop1, pop2, windows, id="country", maf=0.10):
         # minor allele freq filter
         mac_filt = ac[:, :2].min(axis=1) > (maf * 2*len(idx))
         pos = dt.pos.compress(mac_filt)
-        gt = gt.compress(mac_filt, axis=0).compute(num_workers=workers)
+        gt = gt.compress(mac_filt, axis=0)
         ld_win = []
         for s, e in windows:
             win = (pos >= s) & (pos < e)
             gt_r = gt.compress(win)
-            gn = gt_r.to_n_alt()
+            gn = gt_r.to_n_alt().compute(num_workers=workers)
             ld_win.append(mold.Parsing.compute_average_stats(gn)[0])
         ld_dt[str(i)] = np.array(ld_win)
     z_s1 = ld_dt["0"]
