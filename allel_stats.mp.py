@@ -174,6 +174,7 @@ def write_stats_ld(stat_dt, outfile):
     with open(f"agp3.{outfile}.ld.txt", 'w') as f:
         header = f"chromosome\tpopulation\tdist_bp\tmean_D\tlower_D\tupper_D\n"
         f.write(f"{header}")
+        import ipdb;ipdb.set_trace()
         for c in stat_dt:
             for pop in stat_dt[c]:
                 for d, m, l, h in zip(stat_dt[c][pop][3], stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2]):
