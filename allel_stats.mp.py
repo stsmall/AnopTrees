@@ -174,7 +174,6 @@ def write_stats_ld(stat_dt, outfile):
     with open(f"agp3.{outfile}.ld.txt", 'w') as f:
         header = f"chromosome\tpopulation\tdist_bp\tmean_D\tlower_D\tupper_D\n"
         f.write(f"{header}")
-        import ipdb;ipdb.set_trace()
         for c in stat_dt:
             for pop in stat_dt[c]:
                 for d, m, l, h in zip(stat_dt[c][pop][3], stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2]):
@@ -249,6 +248,7 @@ def ld_win(chrom, dt, pop, id="country", maf=0.10, r_min=1, r_max=10000, r_bin=1
         pw_dist = ssp.distance.pdist(c2, 'cityblock')
         pw_ld = mold.Parsing.compute_pairwise_stats(gn)[0]
         ld_ls.append([np.mean(pw_ld[pw_dist == dist]) for dist in range(r_min, r_max, r_bin)])
+    import ipdb;ipdb.set_trace()
     med = np.nanmedian(np.vstack(ld_ls), axis=0)
     lq = np.nanquantile(np.vstack(ld_ls), axis=0, q=0.025)
     hq = np.nanquantile(np.vstack(ld_ls), axis=0, q=0.95)
