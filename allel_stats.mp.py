@@ -354,10 +354,13 @@ def main():
                         pops = sample_size.index[(sample_size >= 10).values].to_list()
                     windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
                     ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
+                    import ipdb;ipdb.set_trace()
+                    # persist here
                     for pop in pops:
                         ac = ac_subpops[pop]
                         ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
                         stat, win, bases, vars = stat_fx(ac_pos, ac_seg, access_dt[c], windows)
+                        # use dask parallel here
                         stat_dt[c][pop] = (stat, win, bases, vars)
                 write_stats(s, stat_dt, outfile)
             elif s == "ld":
@@ -376,9 +379,11 @@ def main():
                         pops = sample_size.index[(sample_size >= 10).values].to_list()
                     windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
                     ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
+                    # persis here
                     for p1, p2 in combinations(pops, 2):
                         p, ac1, ac2 = get_seg_bewteen(chrom_aa_dt[c].pos, ac_subpops[p1], ac_subpops[p2])                  
                         stat, win, bases, counts = stat_fx(p, ac1, ac2, access_dt[c], windows)
+                        # dask parallel here
                         stat_dt[c][f"{p1}-{p2}"] = (stat, win, bases, counts)
                 write_stats(s, stat_dt, outfile)
 
