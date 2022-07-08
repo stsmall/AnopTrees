@@ -176,14 +176,14 @@ def get_ac(dt, pop=None, id="country"):
         panel = dt.meta
         idx = panel[panel[f"{id}"] == pop].index.tolist()
         gt = gt.take(idx, axis=1)
-    return gt.count_alleles(max_allele=1)
+    return gt.count_alleles(max_allele=1).compute(num_workers=workers)
 
 def get_ac_subpops(dt, pops_ls, id="country"):
     # dt is an AllelData obj
     # pop_ls : list of pop names
     panel = dt.meta
     subpops = {sub:panel[panel[f"{id}"] == sub].index.tolist() for sub in pops_ls}
-    return dt.gt.count_alleles_subpops(subpops, max_allele=1)
+    return dt.gt.count_alleles_subpops(subpops, max_allele=1).compute(num_workers=workers)
 
 def get_seg(pos, ac):
     loc_asc = ac.is_segregating()
@@ -318,6 +318,7 @@ def main():
     meta_path = args.meta_path
     access_path = args.access_path
     outfile = args.out_prefix
+    global workers
     workers = args.workers
     win_size = args.window_size
     stats = args.stats
@@ -346,7 +347,7 @@ def main():
                     sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
                     pops = sample_size.index[(sample_size >= 10).values].to_list()
                 windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
-                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops).compute(num_workers=workers)
+                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
                 for pop in pops:
                     ac = ac_subpops[pop]
                     ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
@@ -368,7 +369,7 @@ def main():
                     sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
                     pops = sample_size.index[(sample_size >= 10).values].to_list()
                 windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
-                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops).compute(num_workers=workers)
+                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
                 for p1, p2 in combinations(pops, 2):
                     p, ac1, ac2 = get_seg_bewteen(chrom_aa_dt[c].pos, ac_subpops[p1], ac_subpops[p2])                  
                     stat, win, bases, counts = stat_fx(p, ac1, ac2, access_dt[c], windows)
