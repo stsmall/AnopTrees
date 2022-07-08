@@ -215,15 +215,18 @@ def theta_win(pos, ac, accessible, windows):
     theta, win, bases, vars = allel.windowed_watterson_theta(pos, ac, windows=windows, is_accessible=accessible)
     return theta, win, bases, vars
 
-def ld_win(chrom, dt, pop, id="country", maf=0.10, r_min=1, r_max=10000, r_bin=100):
+def ld_win(chrom, dt, pop, id="country", decay=True, maf=0.10, r_min=1, r_max=10000, r_bin=100):
     # corrected - 1/n, where n is sampled chroms
-    if chrom not in ["3R", "3L"]:
-        return None
     pos = dt.pos
     gt = dt.gt
-    pos_mask = dt.pos < 37_000_00 if chrom == "3R" else ((dt.pos > 15_000_000) & (dt.pos < 41_000_000))
-    pos = pos.compress(pos_mask)
-    gt = gt.compress(pos_mask, axis=0)
+    start_c = 1
+    end_c = chrom_lens[chrom]
+    if decay and chrom in ["3R", "3L"]:
+        pos_mask = dt.pos < 37_000_00 if chrom == "3R" else ((dt.pos > 15_000_000) & (dt.pos < 41_000_000))
+        pos = pos.compress(pos_mask)
+        gt = gt.compress(pos_mask, axis=0)
+        start_c = 1 if chrom == "3R" else 15_000_000
+        end_c = 37_000_000 if chrom == "3R" else 41_000_000
     # get ac
     panel = dt.meta
     idx = panel[panel[f"{id}"] == pop].index.tolist()
@@ -232,23 +235,19 @@ def ld_win(chrom, dt, pop, id="country", maf=0.10, r_min=1, r_max=10000, r_bin=1
     # minor allele freq filter
     mac_filt = ac[:, :2].min(axis=1) > (maf * 2*len(idx))
     pos = pos.compress(mac_filt)
-    gt = gt.compress(mac_filt, axis=0)
-    # start window slide
-    start_c = 1 if chrom == "3R" else 15_000_000
-    end_c = 37_000_000 if chrom == "3R" else 41_000_000
+    gt = gt.compress(mac_filt, axis=0).compute(num_workers=workers)
     wins = get_windows(pos, start_c, end_c, size=100000, step=None)
     ld_ls = []
     for s, e in wins:
         win = (pos >= s) & (pos < e)
         pos_r = pos.compress(win)
         gt_r = gt.compress(win)
-        gn = gt_r.to_n_alt().compute()
+        gn = gt_r.to_n_alt()
         # get LD
         c2 = pos_r[:, None]
         pw_dist = ssp.distance.pdist(c2, 'cityblock')
         pw_ld = mold.Parsing.compute_pairwise_stats(gn)[0]
         ld_ls.append([np.mean(pw_ld[pw_dist == dist]) for dist in range(r_min, r_max, r_bin)])
-    import ipdb;ipdb.set_trace()
     med = np.nanmedian(np.vstack(ld_ls), axis=0)
     lq = np.nanquantile(np.vstack(ld_ls), axis=0, q=0.025)
     hq = np.nanquantile(np.vstack(ld_ls), axis=0, q=0.95)
