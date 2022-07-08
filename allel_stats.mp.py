@@ -161,14 +161,22 @@ def write_stats(stat, stat_dt, outfile):
                 for s, w, b, v in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2], stat_dt[c][pop][3]):
                     f.write(f"{c}\t{pop}\t{w[0]}\t{w[1]}\t{s}\t{b}\t{v}\n")
 
+def write_stats_zx(stat_dt, outfile):
+    with open(f"agp3.{outfile}.zx.txt", 'w') as f:
+        header = f"chromosome\tpopulation\twin_start\twin_stop\tz1\tz2\tzx\n"
+        f.write(f"{header}")
+        for c in stat_dt:
+            for pop in stat_dt[c]:
+                for s, w, z in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2]):
+                    f.write(f"{c}\t{pop}\t{w[0]}\t{w[1]}\t{s}\t{z[0]}\t{z[1]}\n")
+
 def write_stats_ld(stat_dt, outfile):
     with open(f"agp3.{outfile}.ld.txt", 'w') as f:
         header = f"chromosome\tpopulation\tdist_bp\tmean_D\tlower_D\tupper_D\n"
         f.write(f"{header}")
-        dist = list(range(1, 10000, 100))
         for c in stat_dt:
             for pop in stat_dt[c]:
-                for d, m, l, h in zip(dist, stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2]):
+                for d, m, l, h in zip(stat_dt[c][pop][3], stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2]):
                     f.write(f"{c}\t{pop}\t{d}\t{m}\t{l}\t{h}\n")
 
 def get_ac(dt, pop=None, id="country"):
@@ -207,17 +215,17 @@ def theta_win(pos, ac, accessible, windows):
     theta, win, bases, vars = allel.windowed_watterson_theta(pos, ac, windows=windows, is_accessible=accessible)
     return theta, win, bases, vars
 
-def ld_win(chrom, dt, pop, id="country", maf=0.10):
+def ld_win(chrom, dt, pop, id="country", maf=0.10, r_min=1, r_max=10000, r_bin=100):
     # corrected - 1/n, where n is sampled chroms
     if chrom not in ["3R", "3L"]:
         return None
-    pos = dt[chrom].pos
-    gt = dt[chrom].gt
-    pos_mask = dt[chrom].pos < 37_000_00 if chrom == "3R" else ((dt[chrom].pos > 15_000_000) & (dt[chrom].pos < 41_000_000))
+    pos = dt.pos
+    gt = dt.gt
+    pos_mask = dt.pos < 37_000_00 if chrom == "3R" else ((dt.pos > 15_000_000) & (dt.pos < 41_000_000))
     pos = pos.compress(pos_mask)
     gt = gt.compress(pos_mask, axis=0)
     # get ac
-    panel = dt[chrom].meta
+    panel = dt.meta
     idx = panel[panel[f"{id}"] == pop].index.tolist()
     gt = gt.take(idx, axis=1)
     ac = gt.count_alleles(max_allele=1)
@@ -239,11 +247,12 @@ def ld_win(chrom, dt, pop, id="country", maf=0.10):
         c2 = pos_r[:, None]
         pw_dist = ssp.distance.pdist(c2, 'cityblock')
         pw_ld = mold.Parsing.compute_pairwise_stats(gn)[0]
-        ld_ls.append([np.mean(pw_ld[pw_dist == dist]) for dist in range(1, 10000, 100)])
+        ld_ls.append([np.mean(pw_ld[pw_dist == dist]) for dist in range(r_min, r_max, r_bin)])
     med = np.nanmedian(np.vstack(ld_ls), axis=0)
     lq = np.nanquantile(np.vstack(ld_ls), axis=0, q=0.025)
     hq = np.nanquantile(np.vstack(ld_ls), axis=0, q=0.95)
-    return (med, lq, hq)
+    dist = list(range(r_min, r_max, r_bin))
+    return (med, lq, hq, dist)
     
 def get_seg_bewteen(pos, ac1, ac2):
     loc_asc = ac1.is_segregating() & ac2.is_segregating()
@@ -253,14 +262,12 @@ def get_seg_bewteen(pos, ac1, ac2):
     return pos_s, ac1_seg, ac2_seg
 
 def da_win(pos, ac1, ac2, accessible, windows, da=True):
-    import ipdb;ipdb.set_trace()
     dxy, win, bases, counts = allel.windowed_divergence(pos, ac1, ac2, windows=windows, is_accessible=accessible)
     pi, win, bases, vars = pi_win(pos, (ac1+ac2), accessible, windows)
     da = dxy - pi
     return da, win, pi, vars
 
 def dxy_win(pos, ac1, ac2, accessible, windows, da=False):
-    import ipdb;ipdb.set_trace()
     dxy, win, bases, counts = allel.windowed_divergence(pos, ac1, ac2, windows=windows, is_accessible=accessible)
     if da:
         pi, win, bases, vars = pi_win(pos, (ac1+ac2), accessible, windows)
@@ -276,7 +283,6 @@ def fst_weir(dt, chrom_len, pops_ls, win_size=10000):
     #return fst, win, bases, counts
 
 def fst_win(pos, ac1, ac2, accessible, windows, fst_algo='hudson'):
-    import ipdb;ipdb.set_trace()
     if fst_algo == 'hudson':
         fst, win, counts = allel.windowed_hudson_fst(pos, ac1, ac2, windows=windows)
     elif fst_algo == 'patterson':
@@ -287,11 +293,31 @@ def fst_win(pos, ac1, ac2, accessible, windows, fst_algo='hudson'):
     bases = [accessible[s:e].sum() for s, e, in win]
     return fst, win, bases, counts
 
-def zxy_win(daf=0.10):
-    import ipdb;ipdb.set_trace()
-    ...
-    # z_x = (z_s1 + z_s2)/(2*z_all)
-    # in windows along the genome ... so need to calculate all pair-wise comparisons, then all at the end
+def zxy_win(dt, pop1, pop2, windows, id="country", maf=0.10):
+    panel = dt.meta
+    idx_1 = panel[panel[f"{id}"] == pop1].index.tolist()
+    idx_2 = panel[panel[f"{id}"] == pop2].index.tolist()
+    idx_1_2 = idx_1 + idx_2
+    ld_dt = {}
+    for i, idx in enumerate([idx_1, idx_2, idx_1_2]):
+        gt = dt.gt.take(idx, axis=1)
+        ac = gt.count_alleles(max_allele=1)
+        # minor allele freq filter
+        mac_filt = ac[:, :2].min(axis=1) > (maf * 2*len(idx))
+        pos = dt.pos.compress(mac_filt)
+        gt = gt.compress(mac_filt, axis=0).compute(num_workers=workers)
+        ld_win = []
+        for s, e in windows:
+            win = (pos >= s) & (pos < e)
+            gt_r = gt.compress(win)
+            gn = gt_r.to_n_alt()
+            ld_win.append(mold.Parsing.compute_average_stats(gn)[0])
+        ld_dt[str(i)] = np.array(ld_win)
+    z_s1 = ld_dt["0"]
+    z_s2 = ld_dt["1"]
+    z_all = ld_dt["2"]
+    z_x = (z_s1 + z_s2)/(2 * z_all)
+    return z_x, z_s1, z_s2
 
 def parse_args(args_in):
     """Parse args."""
@@ -342,49 +368,45 @@ def main():
     # =================================================================
     #  Main executions
     # =================================================================
+    min_pops_size = 10
     with ProgressBar():
         chrom_dt = load_phased(CHROMS, meta_path = meta_path, zarr_path=zarr_path)
         chrom_aa_dt = remap_alleles(CHROMS, chrom_dt)
         access_dt = get_accessible(CHROMS, access_path)
+        if pops == 'all':
+            sample_size = chrom_aa_dt[CHROMS[0]].meta.groupby("country").count()["sample_id"]
+            pops = sample_size.index[(sample_size >= min_pops_size).values].to_list()
         for s in stats:
             stat_dt = defaultdict(dict)
-            if s in ["pi", "theta", "tajd"]:
+            if s in ["pi", "theta", "tajd", "fst", "dxy", "da"]:
                 stat_fx = eval(f"{s}_win")
                 for c in CHROMS:
-                    if pops == 'all':
-                        sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
-                        pops = sample_size.index[(sample_size >= 10).values].to_list()
                     windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
                     ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
-                    for pop in pops:
-                        ac = ac_subpops[pop]
-                        ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
-                        stat, win, bases, vars = stat_fx(ac_pos, ac_seg, access_dt[c], windows)
-                        stat_dt[c][pop] = (stat, win, bases, vars)
+                    if s in ["pi", "theta", "tajd"]:
+                        for pop in pops:
+                            ac = ac_subpops[pop]
+                            ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
+                            stat, win, bases, vars = stat_fx(ac_pos, ac_seg, access_dt[c], windows)
+                            stat_dt[c][pop] = (stat, win, bases, vars)
+                    elif s in ["fst", "dxy", "da"]:
+                        for p1, p2 in combinations(pops, 2):
+                            p, ac1, ac2 = get_seg_bewteen(chrom_aa_dt[c].pos, ac_subpops[p1], ac_subpops[p2])                  
+                            stat, win, bases, counts = stat_fx(p, ac1, ac2, access_dt[c], windows)
+                            stat_dt[c][f"{p1}-{p2}"] = (stat, win, bases, counts)
                 write_stats(s, stat_dt, outfile)
             elif s == "ld":
                 for c in CHROMS:
-                    if pops == 'all':
-                        sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
-                        pops = sample_size.index[(sample_size >= 10).values].to_list()
                     for pop in pops:
-                        stat_dt[c][pop] = ld_win(c, chrom_aa_dt, pop)
+                        stat_dt[c][pop] = ld_win(c, chrom_aa_dt[c], pop)
                 write_stats_ld(stat_dt, outfile)
-            elif s in ["fst", "dxy", "da"]:
-                stat_fx = eval(f"{s}_win")
-                for c in CHROMS:
-                    if pops == 'all':
-                        sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
-                        pops = sample_size.index[(sample_size >= 10).values].to_list()
-                    windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
-                    ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
-                    for p1, p2 in combinations(pops, 2):
-                        p, ac1, ac2 = get_seg_bewteen(chrom_aa_dt[c].pos, ac_subpops[p1], ac_subpops[p2])                  
-                        stat, win, bases, counts = stat_fx(p, ac1, ac2, access_dt[c], windows)
-                        stat_dt[c][f"{p1}-{p2}"] = (stat, win, bases, counts)
-                write_stats(s, stat_dt, outfile)
             elif s == "zx":
-                ...
+                for c in CHROMS:
+                    windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
+                    for p1, p2 in combinations(pops, 2):
+                        zx, z_s1, z_s2 = zxy_win(chrom_aa_dt[c], p1, p2, windows)
+                        stat_dt[c][f"{p1}-{p2}"] = (zx, windows, z_s1, z_s2)
+                write_stats_zx(stat_dt, outfile)
 
 if __name__ == "__main__":
     main()
