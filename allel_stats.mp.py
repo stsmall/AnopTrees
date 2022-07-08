@@ -183,6 +183,7 @@ def get_ac_subpops(dt, pops_ls, id="country"):
     # pop_ls : list of pop names
     panel = dt.meta
     subpops = {sub:panel[panel[f"{id}"] == sub].index.tolist() for sub in pops_ls}
+    import ipdb; ipdb.set_trace()
     gt = dt.gt
     return gt.count_alleles_subpops(subpops, max_allele=1).compute(num_workers=workers)
 
