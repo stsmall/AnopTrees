@@ -167,8 +167,8 @@ def write_stats_zx(stat_dt, outfile):
         f.write(f"{header}")
         for c in stat_dt:
             for pop in stat_dt[c]:
-                for s, w, z in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2]):
-                    f.write(f"{c}\t{pop}\t{w[0]}\t{w[1]}\t{s}\t{z[0]}\t{z[1]}\n")
+                for s, w, z1, z2 in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2], stat_dt[c][pop][3]):
+                    f.write(f"{c}\t{pop}\t{w[0]}\t{w[1]}\t{s}\t{z1}\t{z2}\n")
 
 def write_stats_ld(stat_dt, outfile):
     with open(f"agp3.{outfile}.ld.txt", 'w') as f:
@@ -305,12 +305,12 @@ def zxy_win(dt, pop1, pop2, windows, id="country", maf=0.10):
         # minor allele freq filter
         mac_filt = ac[:, :2].min(axis=1) > (maf * 2*len(idx))
         pos = dt.pos.compress(mac_filt)
-        gt = gt.compress(mac_filt, axis=0)
+        gt = gt.compress(mac_filt, axis=0).compute(num_workers=workers)
         ld_win = []
         for s, e in windows:
             win = (pos >= s) & (pos < e)
             gt_r = gt.compress(win)
-            gn = gt_r.to_n_alt().compute(num_workers=workers)
+            gn = gt_r.to_n_alt()
             ld_win.append(mold.Parsing.compute_average_stats(gn)[0])
         ld_dt[str(i)] = np.array(ld_win)
     z_s1 = ld_dt["0"]
