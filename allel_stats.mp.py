@@ -15,6 +15,7 @@ import argparse
 import sys
 from collections import defaultdict
 from itertools import combinations
+from dataclasses import dataclass
 
 import allel
 import moments.LD as mold
@@ -124,9 +125,6 @@ def remap_alleles(CHROMS, chrom_dt):
 def get_accessible(chroms, access_path):
     file = np.load(access_path)
     return {c: file[f"access_{c}"] for c in chroms}
-
-from dataclasses import dataclass
-
 
 @dataclass
 class AllelData:
@@ -255,12 +253,14 @@ def get_seg_bewteen(pos, ac1, ac2):
     return pos_s, ac1_seg, ac2_seg
 
 def da_win(pos, ac1, ac2, accessible, windows, da=True):
+    import ipdb;ipdb.set_trace()
     dxy, win, bases, counts = allel.windowed_divergence(pos, ac1, ac2, windows=windows, is_accessible=accessible)
     pi, win, bases, vars = pi_win(pos, (ac1+ac2), accessible, windows)
     da = dxy - pi
     return da, win, pi, vars
 
 def dxy_win(pos, ac1, ac2, accessible, windows, da=False):
+    import ipdb;ipdb.set_trace()
     dxy, win, bases, counts = allel.windowed_divergence(pos, ac1, ac2, windows=windows, is_accessible=accessible)
     if da:
         pi, win, bases, vars = pi_win(pos, (ac1+ac2), accessible, windows)
@@ -276,6 +276,7 @@ def fst_weir(dt, chrom_len, pops_ls, win_size=10000):
     #return fst, win, bases, counts
 
 def fst_win(pos, ac1, ac2, accessible, windows, fst_algo='hudson'):
+    import ipdb;ipdb.set_trace()
     if fst_algo == 'hudson':
         fst, win, counts = allel.windowed_hudson_fst(pos, ac1, ac2, windows=windows)
     elif fst_algo == 'patterson':
@@ -287,6 +288,7 @@ def fst_win(pos, ac1, ac2, accessible, windows, fst_algo='hudson'):
     return fst, win, bases, counts
 
 def zxy_win(daf=0.10):
+    import ipdb;ipdb.set_trace()
     ...
     # z_x = (z_s1 + z_s2)/(2*z_all)
     # in windows along the genome ... so need to calculate all pair-wise comparisons, then all at the end
@@ -354,13 +356,10 @@ def main():
                         pops = sample_size.index[(sample_size >= 10).values].to_list()
                     windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
                     ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
-                    import ipdb;ipdb.set_trace()
-                    # persist here
                     for pop in pops:
                         ac = ac_subpops[pop]
                         ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
                         stat, win, bases, vars = stat_fx(ac_pos, ac_seg, access_dt[c], windows)
-                        # use dask parallel here
                         stat_dt[c][pop] = (stat, win, bases, vars)
                 write_stats(s, stat_dt, outfile)
             elif s == "ld":
@@ -379,13 +378,13 @@ def main():
                         pops = sample_size.index[(sample_size >= 10).values].to_list()
                     windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
                     ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
-                    # persis here
                     for p1, p2 in combinations(pops, 2):
                         p, ac1, ac2 = get_seg_bewteen(chrom_aa_dt[c].pos, ac_subpops[p1], ac_subpops[p2])                  
                         stat, win, bases, counts = stat_fx(p, ac1, ac2, access_dt[c], windows)
-                        # dask parallel here
                         stat_dt[c][f"{p1}-{p2}"] = (stat, win, bases, counts)
                 write_stats(s, stat_dt, outfile)
+            elif s == "zx":
+                ...
 
 if __name__ == "__main__":
     main()
