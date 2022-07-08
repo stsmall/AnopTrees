@@ -295,8 +295,8 @@ def parse_args(args_in):
     parser.add_argument("access_path", help="access_path")
     parser.add_argument("--out_prefix", type=str, default=None,
                         help="outfile_prefix")
-    parser.add_argument('-n', "--nprocs", type=int, default=1,
-                        help="number of processors")
+    parser.add_argument('-w', "--workers", type=int,
+                        help="number of workers for Dask")
     parser.add_argument("--stats", nargs='+', default="all", choices=["pi", "theta", "tajd", "fst", 'dxy', "da", "zx", "ld"], 
                         help="choose stats")
     parser.add_argument("--pops", type=str, nargs='+', default="all",
@@ -318,7 +318,7 @@ def main():
     meta_path = args.meta_path
     access_path = args.access_path
     outfile = args.out_prefix
-    nprocs = args.nprocs
+    workers = args.workers
     win_size = args.window_size
     stats = args.stats
     if stats == "all":
@@ -346,7 +346,7 @@ def main():
                     sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
                     pops = sample_size.index[(sample_size >= 10).values].to_list()
                 windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
-                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
+                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops).compute(num_workers=workers)
                 for pop in pops:
                     ac = ac_subpops[pop]
                     ac_pos, ac_seg = get_seg(chrom_aa_dt[c].pos, ac)
@@ -368,7 +368,7 @@ def main():
                     sample_size = chrom_aa_dt[c].meta.groupby("country").count()["sample_id"]
                     pops = sample_size.index[(sample_size >= 10).values].to_list()
                 windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
-                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops)
+                ac_subpops = get_ac_subpops(chrom_aa_dt[c], pops).compute(num_workers=workers)
                 for p1, p2 in combinations(pops, 2):
                     p, ac1, ac2 = get_seg_bewteen(chrom_aa_dt[c].pos, ac_subpops[p1], ac_subpops[p2])                  
                     stat, win, bases, counts = stat_fx(p, ac1, ac2, access_dt[c], windows)
