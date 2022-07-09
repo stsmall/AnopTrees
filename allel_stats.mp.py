@@ -167,8 +167,8 @@ def write_stats_zx(stat_dt, outfile):
         f.write(f"{header}")
         for c in stat_dt:
             for pop in stat_dt[c]:
-                for s, w, z1, z2 in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2], stat_dt[c][pop][3]):
-                    f.write(f"{c}\t{pop}\t{w[0]}\t{w[1]}\t{s}\t{z1}\t{z2}\n")
+                for zx, z1, z2, win in zip(stat_dt[c][pop][0], stat_dt[c][pop][1], stat_dt[c][pop][2], stat_dt[c][pop][3]):
+                    f.write(f"{c}\t{pop}\t{win[0]}\t{win[1]}\t{zx}\t{z1}\t{z2}\n")
 
 def write_stats_ld(stat_dt, outfile):
     with open(f"agp3.{outfile}.ld.txt", 'w') as f:
@@ -319,6 +319,21 @@ def zxy_win(dt, pop1, pop2, windows, id="country", maf=0.10):
     z_x = (z_s1 + z_s2)/(2 * z_all)
     return z_x, z_s1, z_s2
 
+def zx_win(dt, idx, windows, id="country", maf=0.10):
+    gt = dt.gt.take(idx, axis=1)
+    ac = gt.count_alleles(max_allele=1)
+    # minor allele freq filter
+    mac_filt = ac[:, :2].min(axis=1) > (maf * 2*len(idx))
+    pos = dt.pos.compress(mac_filt)
+    gt = gt.compress(mac_filt, axis=0).compute(num_workers=workers)
+    ld_win = []
+    for s, e in windows:
+        win = (pos >= s) & (pos < e)
+        gt_r = gt.compress(win)
+        gn = gt_r.to_n_alt()
+        ld_win.append(mold.Parsing.compute_average_stats(gn)[0])
+    return np.array(ld_win)
+
 def parse_args(args_in):
     """Parse args."""
     prog = argparse.ArgumentDefaultsHelpFormatter
@@ -403,9 +418,18 @@ def main():
             elif s == "zx":
                 for c in CHROMS:
                     windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
+                    panel = chrom_aa_dt[c].meta
+                    subpops = {sub:panel[panel[f"{id}"] == sub].index.tolist() for sub in pops}
+                    zx_dt = {}
                     for p1, p2 in combinations(pops, 2):
-                        zx, z_s1, z_s2 = zxy_win(chrom_aa_dt[c], p1, p2, windows)
-                        stat_dt[c][f"{p1}-{p2}"] = (zx, windows, z_s1, z_s2)
+                        if p1 not in zx_dt:
+                            zx_dt[p1] = zx_win(chrom_aa_dt[c], subpops[p1], windows)
+                        if p2 not in zx_dt:
+                            zx_dt[p2] = zx_win(chrom_aa_dt[c], subpops[p2], windows)
+                        if f"{p1}-{p2}" not in zx_dt:
+                            zx_dt[f"{p1}-{p2}"] = zx_win(chrom_aa_dt[c], subpops[p1]+subpops[p2], windows)    
+                        zxy = (zx_dt[p1] + zx_dt[p2])/(2 * zx_dt[f"{p1}-{p2}"])
+                        stat_dt[c][f"{p1}-{p2}"] = (zxy, zx_dt[p1], zx_dt[p2], windows)
                 write_stats_zx(stat_dt, outfile)
 
 if __name__ == "__main__":
