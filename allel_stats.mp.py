@@ -419,10 +419,10 @@ def main():
                 for c in CHROMS:
                     windows = get_windows(chrom_aa_dt[c].pos, 1, chrom_lens[c], size=win_size, step=None)
                     panel = chrom_aa_dt[c].meta
-                    subpops = {sub:panel[panel[f"{id}"] == sub].index.tolist() for sub in pops}
+                    subpops = {sub:panel[panel["country"] == sub].index.tolist() for sub in pops}
                     zx_dt = {}
                     for p1, p2 in combinations(pops, 2):
-                        import ipdb;ipdb.set_trace()
+                        #import ipdb;ipdb.set_trace()
                         if p1 not in zx_dt:
                             zx_dt[p1] = zx_win(chrom_aa_dt[c], subpops[p1], windows)
                         if p2 not in zx_dt:
