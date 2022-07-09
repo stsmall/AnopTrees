@@ -422,6 +422,7 @@ def main():
                     subpops = {sub:panel[panel[f"{id}"] == sub].index.tolist() for sub in pops}
                     zx_dt = {}
                     for p1, p2 in combinations(pops, 2):
+                        import ipdb;ipdb.set_trace()
                         if p1 not in zx_dt:
                             zx_dt[p1] = zx_win(chrom_aa_dt[c], subpops[p1], windows)
                         if p2 not in zx_dt:
