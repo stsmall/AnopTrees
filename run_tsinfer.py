@@ -17,6 +17,7 @@ import os
 import tskit
 import tsinfer
 import tsdate
+import msprime as msp
 import daiquiri
 import logging
 daiquiri.setup(level=logging.INFO)
@@ -183,7 +184,7 @@ def parse_args(args_in):
                         help="Which step of the algorithm to run:"
                         "generate ancestors (GA), match ancestors"
                         "(MA), or match samples (MS) or all three (infer)")
-    parser.add_argument("--recombination_rate", type=float, default=1e-8, help="")
+    parser.add_argument("--recombination_rate", type=str, default='1e-8', help="file or float")
     parser.add_argument("--mismatch_ma", type=float, default=1, help="")
     parser.add_argument("--mismatch_ms", type=float, default=1, help="")
     parser.add_argument("--reinfer", action="store_true", help="reinfer on a dated tree")
@@ -198,7 +199,11 @@ def main():
     #  Gather args
     # =================================================================
     args = parse_args(sys.argv[1:])
-    recombination_rate = args.recombination_rate
+    rec_rate = args.recombination_rate
+    if rec_rate[0].isdigit():
+        recombination_rate = float(rec_rate)
+    else: # is file
+        recombination_rate = msp.RateMap.read_hapmap(rec_rate, has_header=True)
     mismatch_ma = args.mismatch_ma
     mismatch_ms = args.mismatch_ms
     prefix = args.prefix
