@@ -53,10 +53,10 @@ def gnn_fx(outfile, ts, ref_samples, target_samples, pop_ids, groups, samples="s
     sample_names = [json.loads(ts.individual(n.individual).metadata)[samples] for n in sample_nodes]
     sample_pops = [json.loads(ts.population(n.population).metadata)[groups] for n in sample_nodes]
     gnn_table = pd.DataFrame(data=gnn,
-                            index=[pd.Index(sample_ids, name="Node")],
+                            index=[pd.Index(sample_pops, name=groups)],
                             columns=pop_ids)
-    gnn_table[samples] = sample_names 
-    gnn_table[groups] = sample_pops
+    gnn_table.insert(0, samples, sample_names) 
+    gnn_table.insert(1, "node_id", sample_ids)
     gnn_table.to_csv(f"{outfile}.gnn.csv")
 
 
