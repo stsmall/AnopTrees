@@ -25,7 +25,7 @@ import pandas as pd
 import numpy as np
 
 
-def gnn_fx(outfile, ts, ref_samples, target_samples, pop_ids, groups, samples="sample_id"):
+def gnn_fx(outfile, ts, ref_samples, target_samples, pop_ids, groups, samples="sample_name"):
     """Run mean GNN fx.
 
     Parameters
@@ -211,7 +211,7 @@ def windowed_gnn(ts, focal, reference_sets, windows=None, time_windows=None, spa
     return A
 
 
-def gnn_windows_fx(outfile, ts, ref_samples, target_samples, pop_ids, groups, samples="sample_id"):
+def gnn_windows_fx(outfile, ts, ref_samples, target_samples, pop_ids, groups, samples="sample_name"):
     """Calculate gnn in windows.
 
     Parameters
@@ -264,6 +264,8 @@ def parse_args(args_in):
                         help="run gnn in windows mode")
     parser.add_argument("--outfile", type=str, default=None,
                         help="name for output file")
+    parser.add_argument("--threads", type=int, default=1,
+                        help="number threads")
     return parser.parse_args(args_in)
 
 
