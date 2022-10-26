@@ -238,13 +238,24 @@ def gnn_windows_fx(outfile, ts, ref_samples, target_samples, pop_ids, groups, sa
     sample_names = [json.loads(ts.individual(n.individual).metadata)[samples] for n in sample_nodes]
     sample_names = list(dict.fromkeys(sample_names))
     col_names = [f"{n}_{i}" for n in sample_names for i in [0, 1]]
-    iterables = [col_names, pop_ids]
-    index = pd.MultiIndex.from_product(iterables, names=[samples, groups])
-    gnn_table = pd.DataFrame(data=np.reshape(gnn_win,[len(gnn_win), np.product(gnn_win.shape[1:])]), columns=index)
-    gnn_table.insert(loc=0, column="left_bp", value = list(ts.breakpoints())[:-1])
-    gnn_table.insert(loc=1, column="right_bp", value = list(ts.breakpoints())[1:])
     
-    gnn_table.to_csv(f"{outfile}.gnn_windows.csv")
+    chrom = "3L"
+    left = list(ts.breakpoints())[:-1]
+    right = list(ts.breakpoints())[1:]
+    breakpoint()
+    with open(f"{outfile}.gnn_windows.csv") as f:
+        f.write(f'chromosome,sample_id,left_coord,right_coord,{",".join(pop_ids)}\n')
+        for s in col_names:
+            for i in range(len(left)): 
+                f.write(f"{chrom},{s},{left[i]},{right[i]},{gnn_win[i]}\n")
+                
+    
+    #iterables = [col_names, pop_ids]
+    #index = pd.MultiIndex.from_product(iterables, names=[samples, groups])
+    #gnn_table = pd.DataFrame(data=np.reshape(gnn_win,[len(gnn_win), np.product(gnn_win.shape[1:])]), columns=index)
+    #gnn_table.insert(loc=0, column="left_bp", value = list(ts.breakpoints())[:-1])
+    #gnn_table.insert(loc=1, column="right_bp", value = list(ts.breakpoints())[1:])
+    #gnn_table.to_csv(f"{outfile}.gnn_windows.csv")
     
 
 
