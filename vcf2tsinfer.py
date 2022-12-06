@@ -165,28 +165,20 @@ def add_diploid_sites(vcf,
                 ancestral = variant.INFO.get('AA')
                 ancestral_prob = variant.INFO.get('AAProb')
                 ancestral_cond = variant.INFO.get('AAcond')
-                ordered_alleles = [ancestral] + list(set(alleles) - {ancestral})
-                allele_index = {old_index: ordered_alleles.index(allele) for old_index,
-                                allele in enumerate(alleles)}
-                # check for bad sites
-                inference = len(ordered_alleles) <= 2 and ancestral_cond not in ['not_seg_allele', 'dbl_node', 'not_inferred', "maj_default"]
-                if not inference:
+                anc_ix = alleles.index(ancestral)
+                # infer by parsimony
+                parsimony = ancestral_cond in ['not_seg_allele', 'dbl_node', 'not_inferred', "maj_default"]
+                if parsimony:
                     t.write(f"{pos}\t{alleles}\t{ancestral_prob}\t{ancestral_cond}\n")
-                    continue
+                    anc_ix = tskit.MISSING_DATA
                 # genotypes
                 if chrom == "X":
                     genotypes = []
                     for i, row in enumerate(variant.genotypes):
                         old_index = row[:1] if i in male_ix else row[:2]
-                        if ancestral == variant.REF:
-                            genotypes.extend(old_index)
-                        else:
-                            genotypes.extend([allele_index[i] for i in old_index])
+                        genotypes.extend(old_index)
                 else:
-                    if ancestral == variant.REF:
-                        genotypes = [old_index for row in variant.genotypes for old_index in row[:2]]
-                    else:
-                        genotypes = [allele_index[old_index] for row in variant.genotypes for old_index in row[:2]]
+                    genotypes = [old_index for row in variant.genotypes for old_index in row[:2]]
                 # handle missing genotypes
                 if missing and variant.num_unknown > 0:
                     missing_genos = [i for i, n in enumerate(genotypes) if n == '.']
@@ -201,8 +193,7 @@ def add_diploid_sites(vcf,
                     meta_pos = add_meta_site(meta_gff, pos) if meta_gff is not None else None
                 # add sites
                 #genotypes = np.array(genotypes, dtype="int8")
-                sample_data.add_site(pos, genotypes=genotypes,
-                                    alleles=ordered_alleles,
+                sample_data.add_site(pos, genotypes=genotypes, alleles=alleles, ancestral_allele=anc_ix,
                                     metadata=meta_pos)
             progressbar.close()
             sample_data.finalise()

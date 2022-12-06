@@ -9,7 +9,8 @@ with open(file1, 'r') as fp:
     for line in fp:
         x = line.strip().split(";")
         flip_dt[x[0]] = x[1]
-
+        
+# TODO: add cond that it was Relate
 with gzip.open(f"{file2}-flip", 'wt') as f:
     with gzip.open(file2, 'rt') as vcf:
         for line in vcf:
