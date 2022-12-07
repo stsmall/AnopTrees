@@ -20,6 +20,7 @@ import sys
 import argparse
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 import plotly.express as px
 
 
@@ -178,7 +179,7 @@ def compile_window_arrays(chrom_start, chrom_end, window_size, window_step):
     windows_mid_arr = np.array(window_start_arr + (0.5 * window_size), dtype=int)
     return window_start_arr, windows_stop_arr, windows_mid_arr
 
-def window_pca(gt_arr, pos_arr, window_start, window_stop, haploid, min_var_per_window=50):
+def window_pca(gt_arr, pos_arr, window_start, window_stop, phased, min_var_per_window=50):
     """_summary_
 
     Parameters
@@ -202,13 +203,13 @@ def window_pca(gt_arr, pos_arr, window_start, window_stop, haploid, min_var_per_
         _description_
     """
     window_idx_arr = np.where((pos_arr >= window_start) & (pos_arr < window_stop))[0]
-    window_gt_arr = gt_arr.take(window_idx_arr, axis=0, mode="clip")
+    window_gt_arr = gt_arr.take(window_idx_arr, axis=0)
     
     if len(window_idx_arr) <= min_var_per_window:
         empty_array = [None] * window_gt_arr.shape[1]
         print(f"[INFO] Skipped window {window_start} - {window_stop} with {window_gt_arr.shape[0]} variants (threshold is {min_var_per_window} variants per window)", file=sys.stderr, flush=True)
         return empty_array, empty_array, None, None, window_gt_arr.shape[0]
-    elif haploid:
+    elif phased:
         gn = window_gt_arr.to_haplotypes()
         pca = allel.pca(gn, n_components=2, copy=True, scaler='patterson', ploidy=1)
         return pca[0][: , 0], pca[0][: , 1], pca[1].explained_variance_ratio_[0]*100, pca[1].explained_variance_ratio_[1]*100, window_gt_arr.shape[0]
@@ -217,7 +218,7 @@ def window_pca(gt_arr, pos_arr, window_start, window_stop, haploid, min_var_per_
         pca = allel.pca(gn, n_components=2, copy=True, scaler='patterson', ploidy=2)
         return pca[0][: , 0], pca[0][: , 1], pca[1].explained_variance_ratio_[0]*100, pca[1].explained_variance_ratio_[1]*100, window_gt_arr.shape[0]
 
-def do_pca(gt_arr, pos_arr, window_start_arr, windows_mid_arr, windows_stop_arr, metadata_df, win_size, haploid):
+def do_pca(gt_arr, pos_arr, window_start_arr, windows_mid_arr, windows_stop_arr, metadata_df, phased, win_size):
     """_summary_
 
     Parameters
@@ -252,24 +253,17 @@ def do_pca(gt_arr, pos_arr, window_start_arr, windows_mid_arr, windows_stop_arr,
     n_variants_lst = []
 
     # iterrate and conduct PCAs
-    num = 1
-    print(f"[INFO] Processed 0 of {len(window_start_arr)} windows", file=sys.stderr, flush=True)
-    for window_start, window_mid, window_stop in zip(window_start_arr, windows_mid_arr, windows_stop_arr):
-        pc_1_df[window_mid], pc_2_df[window_mid], pc_1_pct_explained, pc_2_pct_explained, n_variants = window_pca(gt_arr, pos_arr, window_start, window_stop, haploid)
+    for window_start, window_mid, window_stop in tqdm(zip(window_start_arr, windows_mid_arr, windows_stop_arr), total=len(window_start_arr)):
+        pc_1_df[window_mid], pc_2_df[window_mid], pc_1_pct_explained, pc_2_pct_explained, n_variants = window_pca(gt_arr, pos_arr, window_start, window_stop, phased)
         pc_1_pct_explained_lst.append(pc_1_pct_explained)
         pc_2_pct_explained_lst.append(pc_2_pct_explained)
         n_variants_lst.append(n_variants)
-        if num % 500 == 0:
-            print(f"[INFO] Processed {num} of {len(window_start_arr)} windows", file=sys.stderr, flush=True)
-        num += 1
-
-    print('[INFO] Processed all windows', file=sys.stderr, flush=True)
 
     pc_1_pct_explained_arr = np.array(pc_1_pct_explained_lst, dtype=float)
     pc_2_pct_explained_arr = np.array(pc_2_pct_explained_lst, dtype=float)
 
     # compile a data frame of additional info (% variance explained for PC_1 and PC_1, the % of sites per window)
-    additional_info_df = pd.DataFrame(np.array([windows_mid_arr, pc_1_pct_explained_arr, pc_2_pct_explained_arr, np.array(n_variants_lst)/np.array(win_size/100)]).transpose(), columns=['Genomic_Position', 'perc explained PC 1', 'perc explained PC 2', 'perc included sites'], dtype=float)
+    additional_info_df = pd.DataFrame(np.array([windows_mid_arr, pc_1_pct_explained_arr, pc_2_pct_explained_arr, np.array(n_variants_lst)/win_size]).transpose(), columns=['Genomic_Position', 'perc explained PC 1', 'perc explained PC 2', 'perc included sites'], dtype=float)
 
     return pc_1_df, pc_2_df, additional_info_df
 
@@ -390,7 +384,7 @@ def plot_pc(pc_df, pc, color_taxon, chrom, chrom_start, chrom_end):
                     hover_data=[x for x in list(pc_df.columns) if x not in ['window_mid', pc]],
                     width=chrom_len/20000, height=500,
                     title=f"<b>Windowed PCA of {chrom} </b><br> ({chrom_start} - {chrom_end})", 
-                    labels = dict(pc_1 = '<b>PC 1<b>', pc_2 = '<b>PC 2<b>', window_mid = '<b>Genomic position<b>'))
+                    labels = dict(pc1 = '<b>PC 1<b>', pc2 = '<b>PC 2<b>', window_mid = '<b>Genomic position<b>'))
 
     fig.update_layout(template='simple_white', font_family='Arial', font_color='black',
                     xaxis=dict(ticks='outside', mirror=True, showline=True),
@@ -463,7 +457,7 @@ def save_results(additional_info_df, pc_dfs, outfile, color_by, chrom, chrom_sta
     for c_taxon in color_by.split(','):
         for i, df in enumerate(pc_dfs):
             df.to_csv(f"{outfile}.pc{i+1}.tsv", sep='\t', index=False)
-            pc_plot = plot_pc(df, f"pc_{i+1}", c_taxon, chrom, chrom_start, chrom_end)
+            pc_plot = plot_pc(df, f"pc{i+1}", c_taxon, chrom, chrom_start, chrom_end)
             pc_plot.write_html(f"{outfile}.pc{i+1}.{c_taxon}.html")
             pc_plot.write_image(f"{outfile}.pc{i+1}.{c_taxon}.pdf", engine='kaleido', scale=2.4)
     # supplementary df
@@ -557,7 +551,8 @@ def main():
     else:
         var_thresh = False  # override default
         assert len(mean_thresh.split(",")) > 0
-    haploid = args.phased
+    phased = args.phased
+    #TODO: add phased expansion of metadata_df
     # =================================================================
     #  Main executions
     # =================================================================
@@ -567,7 +562,7 @@ def main():
         window_start_arr, windows_stop_arr, windows_mid_arr = compile_window_arrays(chrom_start, chrom_end, win_size, win_step)
         gt_arr, pos_arr, metadata_df = prepare_data(genos, meta, group, group_id)
         # run PCA in windows
-        pc_1_df, pc_2_df, additional_info_df = do_pca(gt_arr, pos_arr, window_start_arr, windows_mid_arr, windows_stop_arr, metadata_df, win_size, haploid)
+        pc_1_df, pc_2_df, additional_info_df = do_pca(gt_arr, pos_arr, window_start_arr, windows_mid_arr, windows_stop_arr, metadata_df, phased, win_size)
         del gt_arr, pos_arr
         # calibrate and annotate
         pc_1_df = calibrate_annotate(pc_1_df, metadata_df, 'pc1', var_threshold=var_thresh, mean_threshold=mean_thresh)
