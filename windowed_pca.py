@@ -430,7 +430,7 @@ def plot_additional_info(additional_info_df, chrom, chrom_start, chrom_end):
         _description_
     """
     chrom_len = chrom_end - chrom_start
-    fig = px.line(additional_info_df, x='Genomic_Position', y=['perc explained PC 1', 'perc explained PC 2', 'perc included sites'], 
+    fig = px.line(additional_info_df, x='Genomic_Position', y=['perc explained PC 1', 'perc explained PC 2', 'perc var sites'], 
                     width=chrom_len/20000, height=500,
                     title=f"<b>Explained variance and of proportion of variants for windowed PCAs of {chrom} </b><br> ({chrom_start} - {chrom_end})",
                     labels = dict(Genomic_Position = '<b>Genomic Position<b>', value = '<b>variable [%]<b>', window_mid = '<b>Genomic position<b>'))
