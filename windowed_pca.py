@@ -566,7 +566,7 @@ def main():
     print('\n[INFO] Processing data and plotting\n', file=sys.stderr)
     outfile = f"{outfile_prefix}_{chrom}"
     if not os.path.exists(f"{outfile}.pc1.tsv") and not os.path.exists(f"{outfile}.pc1.supplementary_info.tsv"):
-        gt_arr, pos_arr, metadata_df = prepare_data(genos, meta, group, group_id, color_by)
+        gt_arr, pos_arr, metadata_df = prepare_data(chrom, genos, meta, group, group_id, color_by, phased)
         if chrom_end is None:
             chrom_end = pos_arr[-1]
         window_start_arr, windows_stop_arr, windows_mid_arr = compile_window_arrays(chrom_start, chrom_end, win_size, win_step)
