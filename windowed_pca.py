@@ -139,7 +139,7 @@ def prepare_data(chrom, gt_path, metadata_path, group=None, group_id=None, color
     _type_
         _description_
     """
-    cols = ['sample_id', 'sex_call', group, group_id, color_by]
+    cols = ['sample_id', 'sex_call', group, color_by]
     gt, pos, metadata_df = load_phased(chrom, metadata_path, gt_path, cols)
     
     # subset input 
