@@ -25,19 +25,21 @@ import plotly.express as px
 
 
 def check_order(panel, samples):
-    """_summary_
+    """Verify the order of the metadata matches the input genotypes
 
     Parameters
     ----------
-    panel : _type_
-        _description_
-    samples : _type_
-        _description_
+    panel : pandas.DataFrame
+        dataframe containing metadata, must have a column of 'sample_id'
+    samples : List
+        list of samples imported from the genotype data, either VCF or Zarr
 
     Returns
     -------
-    _type_
-        _description_
+    panel : pandas.DataFrame
+        updated metadata with callset_index column
+    order : List
+        notated list to keep track of reordered
     """
     if np.all(samples == panel['sample_id'].values):
         order = True
@@ -58,60 +60,58 @@ def check_order(panel, samples):
         panel = panel.reset_index()
     return panel, order
 
-def load_meta(file_path, is_X=False):
-    """_summary_
+def load_meta(file_path, cols, is_X=False):
+    """Load a metadata file into a pandas DataFrame obj.
 
     Parameters
     ----------
-    file_path : _type_
-        _description_
+    file_path : str
+        path to metadata
+    cols : List
+        required columns are: sample_id, sex_call
     is_X : bool, optional
-        _description_, by default False
+        whether to filter by X chromosom, by default False
 
     Returns
     -------
     _type_
         _description_
     """
-    dtypes = {'sample_id':'object', 'country':'object', 'location':'object', 'year':'int64', 'month':'int64',
-            'latitude':'float64', 'longitude':'float64', 'aim_species':'object', 'sex_call':'object',
-            "2La":"object", "2Rb":"object", "2Rc":"object", "2Rd":"object", "2Rj":"object", "2Ru":"object"}
-    cols = ['sample_id', 'country', 'location', 'year', 'month', 'latitude', 'longitude', 'aim_species', "sex_call",
-            "2La", "2Rb", "2Rc", "2Rd", "2Rj", "2Ru"]
-    panel = pd.read_csv(file_path, sep=',', usecols=cols, dtype=dtypes)
-
+    panel = pd.read_csv(file_path, sep=',', usecols=cols, dtype="string")
     if is_X:
         panel = panel[panel["sex_call"] == "F"]
-    panel.groupby(by=(['country', "location"])).count()
     return panel
 
-def load_phased(chrom, meta_path, zarr_path):
-    """_summary_
+def load_phased(chrom, meta_path, zarr_path, cols):
+    """Load genotype data into a scikit-allel dask array obj.
 
     Parameters
     ----------
-    chrom : _type_
-        _description_
-    meta_path : _type_
-        _description_
-    zarr_path : _type_
-        _description_
+    chrom : str
+        name of the chromosome or contig
+    meta_path : str
+        path to meta data
+    zarr_path : str
+        path to zarr files
 
     Returns
     -------
-    _type_
+    gt : allel obj
         _description_
+    pos : allel obj
+        referencing positions of sites in the data
+    panel : DataFrame
     """
     callset = zarr.open_group(zarr_path, mode='r')
     panel = pd.DataFrame()
     order_ls = []
     samples = callset[f'{chrom}/samples'][:]
     if chrom == "X":
-        panel_x = load_meta(meta_path, is_X=True)
+        panel_x = load_meta(meta_path, cols, is_X=True)
         panel, order = check_order(panel_x, samples)
     else:
         if len(panel.index) == 0:
-            panel = load_meta(meta_path)
+            panel = load_meta(meta_path, cols)
         panel, order = check_order(panel, samples)
         order_ls.append(order)
     assert all(order_ls)
@@ -120,7 +120,7 @@ def load_phased(chrom, meta_path, zarr_path):
     pos = allel.SortedIndex(callset[f'{chrom}/variants/POS'])
     return gt, pos, panel
 
-def prepare_data(chrom, gt_path, metadata_path, group=None, group_id=None, maf=0.05):
+def prepare_data(chrom, gt_path, metadata_path, group=None, group_id=None, color_by=None, phased=False, maf=0.05):
     """_summary_
 
     Parameters
@@ -139,7 +139,8 @@ def prepare_data(chrom, gt_path, metadata_path, group=None, group_id=None, maf=0
     _type_
         _description_
     """
-    gt, pos, metadata_df = load_phased(chrom, metadata_path, gt_path)
+    cols = ['sample_id', 'sex_call', group, group_id, color_by]
+    gt, pos, metadata_df = load_phased(chrom, metadata_path, gt_path, cols)
     
     # subset input 
     if group and group_id:
@@ -152,7 +153,12 @@ def prepare_data(chrom, gt_path, metadata_path, group=None, group_id=None, maf=0
     flt = (ac.max_allele() == 1) & (ac[:, :2].min(axis=1) > 1) & (fq[:, 1] >= maf)
     pos_flt = pos[flt]
     gt_flt = gt.compress(flt, axis=0)
-
+    if phased:
+        metadata_df_1 = metadata_df.copy(deep=True)
+        metadata_df["sample_id"] = metadata_df["sample_id"] + '_0'
+        metadata_df_1["sample_id"] = metadata_df["sample_id"] + '_1'
+        metadata_df = pd.concat([metadata_df, metadata_df_1]).sort_index()
+        metadata_df["index"] = list(range(len(metadata_df["index"])))
     return gt_flt, pos_flt, metadata_df
 
 def compile_window_arrays(chrom_start, chrom_end, window_size, window_step):
@@ -212,10 +218,14 @@ def window_pca(gt_arr, pos_arr, window_start, window_stop, phased, min_var_per_w
     elif phased:
         gn = window_gt_arr.to_haplotypes()
         pca = allel.pca(gn, n_components=2, copy=True, scaler='patterson', ploidy=1)
+        #pca = allel.pca(gn, n_components=2, copy=True, scaler='standard')
+        #pca = allel.randomized_pca(gn, n_components=2)
         return pca[0][: , 0], pca[0][: , 1], pca[1].explained_variance_ratio_[0]*100, pca[1].explained_variance_ratio_[1]*100, window_gt_arr.shape[0]
     else:
         gn = window_gt_arr.to_n_alt()
         pca = allel.pca(gn, n_components=2, copy=True, scaler='patterson', ploidy=2)
+        #pca = allel.pca(gn, n_components=2, copy=True, scaler='standard')
+        #pca = allel.randomized_pca(gn, n_components=2)
         return pca[0][: , 0], pca[0][: , 1], pca[1].explained_variance_ratio_[0]*100, pca[1].explained_variance_ratio_[1]*100, window_gt_arr.shape[0]
 
 def do_pca(gt_arr, pos_arr, window_start_arr, windows_mid_arr, windows_stop_arr, metadata_df, phased, win_size):
@@ -263,7 +273,7 @@ def do_pca(gt_arr, pos_arr, window_start_arr, windows_mid_arr, windows_stop_arr,
     pc_2_pct_explained_arr = np.array(pc_2_pct_explained_lst, dtype=float)
 
     # compile a data frame of additional info (% variance explained for PC_1 and PC_1, the % of sites per window)
-    additional_info_df = pd.DataFrame(np.array([windows_mid_arr, pc_1_pct_explained_arr, pc_2_pct_explained_arr, np.array(n_variants_lst)/win_size]).transpose(), columns=['Genomic_Position', 'perc explained PC 1', 'perc explained PC 2', 'perc included sites'], dtype=float)
+    additional_info_df = pd.DataFrame(np.array([windows_mid_arr, pc_1_pct_explained_arr, pc_2_pct_explained_arr, 100*(np.array(n_variants_lst)/win_size)]).transpose(), columns=['Genomic_Position', 'perc explained PC 1', 'perc explained PC 2', 'perc var sites'], dtype=float)
 
     return pc_1_df, pc_2_df, additional_info_df
 
@@ -354,7 +364,7 @@ def calibrate_annotate(pc_df, metadata_df, pc, var_threshold, mean_threshold):
 
     return pc_df
 
-def plot_pc(pc_df, pc, color_taxon, chrom, chrom_start, chrom_end):
+def plot_pc(pc_df, pc, color_by, chrom, chrom_start, chrom_end):
     """_summary_
 
     Parameters
@@ -380,7 +390,7 @@ def plot_pc(pc_df, pc, color_taxon, chrom, chrom_start, chrom_end):
         _description_
     """
     chrom_len = chrom_end - chrom_start
-    fig = px.line(pc_df, x='window_mid', y=pc, line_group='sample_id', color=color_taxon, hover_name='sample_id', 
+    fig = px.line(pc_df, x='window_mid', y=pc, line_group='sample_id', color=color_by, hover_name='sample_id', 
                     hover_data=[x for x in list(pc_df.columns) if x not in ['window_mid', pc]],
                     width=chrom_len/20000, height=500,
                     title=f"<b>Windowed PCA of {chrom} </b><br> ({chrom_start} - {chrom_end})", 
@@ -429,8 +439,6 @@ def plot_additional_info(additional_info_df, chrom, chrom_start, chrom_end):
                     hovermode='x unified')
     
     fig.update_traces(line=dict(width=1.0))
-    
-    #fig.show()
 
     return fig
 
@@ -552,7 +560,6 @@ def main():
         var_thresh = False  # override default
         assert len(mean_thresh.split(",")) > 0
     phased = args.phased
-    #TODO: add phased expansion of metadata_df
     # =================================================================
     #  Main executions
     # =================================================================
@@ -560,7 +567,7 @@ def main():
     outfile = f"{outfile_prefix}_{chrom}"
     if not os.path.exists(f"{outfile}.pc1.tsv") and not os.path.exists(f"{outfile}.pc1.supplementary_info.tsv"):
         window_start_arr, windows_stop_arr, windows_mid_arr = compile_window_arrays(chrom_start, chrom_end, win_size, win_step)
-        gt_arr, pos_arr, metadata_df = prepare_data(genos, meta, group, group_id)
+        gt_arr, pos_arr, metadata_df = prepare_data(genos, meta, group, group_id, color_by)
         # run PCA in windows
         pc_1_df, pc_2_df, additional_info_df = do_pca(gt_arr, pos_arr, window_start_arr, windows_mid_arr, windows_stop_arr, metadata_df, phased, win_size)
         del gt_arr, pos_arr
