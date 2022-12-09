@@ -43,19 +43,16 @@ def check_order(panel, samples):
     """
     if np.all(samples == panel['sample_id'].values):
         order = True
-        print("All in order")
         samples_list = list(samples)
         samples_callset_index = [samples_list.index(s) for s in panel['sample_id']]
         panel['callset_index'] = samples_callset_index
     else:
-        print("Out of order")
         order = False
         samples_list = list(samples)
         samples_callset_index = [samples_list.index(s) for s in panel['sample_id']]
         panel['callset_index'] = samples_callset_index
         panel = panel.sort_values(by='callset_index')
         if np.all(samples == panel['sample_id'].values):
-            print("All in order")
             order = True
         panel = panel.reset_index()
     return panel, order
@@ -82,6 +79,13 @@ def load_meta(file_path, cols, is_X=False):
         panel = panel[panel["sex_call"] == "F"]
     return panel
 
+def vcf2zarr(chrom, vcf_path):
+    if vcf_path.endswith(".vcf"):
+        zarr_path = vcf_path.rstrip(".vcf")
+    elif vcf_path.endswith(".vcf.gz"):
+        zarr_path = vcf_path.rstrip(".vcf.gz")
+    allel.vcf_to_zarr(vcf_path, zarr_path, group=chrom, fields='*', alt_number=2)
+    
 def load_phased(chrom, meta_path, zarr_path, cols):
     """Load genotype data into a scikit-allel dask array obj.
 
@@ -564,6 +568,8 @@ def main():
     #  Main executions
     # =================================================================
     print('\n[INFO] Processing data and plotting\n', file=sys.stderr)
+    if genos.endswith(".vcf") or genos.endswith(".vcf.gz"):
+        vcf2zarr(chrom, genos)
     outfile = f"{outfile_prefix}_{chrom}"
     if not os.path.exists(f"{outfile}.pc1.tsv") and not os.path.exists(f"{outfile}.pc1.supplementary_info.tsv"):
         gt_arr, pos_arr, metadata_df = prepare_data(chrom, genos, meta, group, group_id, color_by, phased)
