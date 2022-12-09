@@ -504,7 +504,7 @@ def parse_args(args_in):
     parser.add_argument("gt", type=str, help="path to genotypes as zarr")
     parser.add_argument("meta", type=str, help="path to meta data, tab delim")
     parser.add_argument("outfile", type=str, help="path or name for outfiles")
-    parser.add_argument("--chrom", type=str, required=True, default='all', help="name of chromosome")
+    parser.add_argument("--chrom", type=str, required=True, help="name of chromosome")
     parser.add_argument("--chrom_start", type=float, default=0, help="start of chromosome")
     parser.add_argument("--chrom_end", type=float, default=None, help="end of chromosome")
     parser.add_argument("--win_size", type=float, default=1e6, help="size of window")
@@ -529,7 +529,6 @@ def main():
     # =================================================================
     args = parse_args(sys.argv[1:])
     genos = args.gt
-    assert os.path.exists(genos)
     meta = args.meta
     assert os.path.exists(meta)
     outfile_prefix = args.outfile.lower()
