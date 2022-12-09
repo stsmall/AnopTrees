@@ -535,7 +535,7 @@ def main():
     genos = args.gt
     meta = args.meta
     assert os.path.exists(meta)
-    outfile_prefix = args.outfile.lower()
+    outfile_prefix = args.outfile
     if outfile_prefix.endswith('/') and not os.path.exists(outfile_prefix):
         os.makedirs(outfile_prefix)
     chrom = args.chrom
