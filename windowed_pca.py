@@ -501,10 +501,10 @@ def parse_args(args_in):
     """Parse args."""
     prog = argparse.ArgumentDefaultsHelpFormatter
     parser = argparse.ArgumentParser(prog=sys.argv[0], formatter_class=prog)
-    parser.add_argument("gt", type=str, required=True, help="path to genotypes as zarr")
-    parser.add_argument("meta", type=str, required=True, help="path to meta data, tab delim")
-    parser.add_argument("outfile", type=str, required=True, help="path or name for outfiles")
-    parser.add_argument("--chrom", type=str, default='all', help="name of chromosome")
+    parser.add_argument("gt", type=str, help="path to genotypes as zarr")
+    parser.add_argument("meta", type=str, help="path to meta data, tab delim")
+    parser.add_argument("outfile", type=str, help="path or name for outfiles")
+    parser.add_argument("--chrom", type=str, required=True, default='all', help="name of chromosome")
     parser.add_argument("--chrom_start", type=float, default=0, help="start of chromosome")
     parser.add_argument("--chrom_end", type=float, default=None, help="end of chromosome")
     parser.add_argument("--win_size", type=float, default=1e6, help="size of window")
@@ -539,8 +539,9 @@ def main():
     chrom_start = int(args.chrom_start)
     assert chrom_start >= 0
     chrom_end = int(args.chrom_end)
-    assert chrom_end > 0
-    assert chrom_start < chrom_end
+    if chrom_end is not None:
+        assert chrom_end > 0
+        assert chrom_start < chrom_end
     win_size = int(args.win_size)
     assert win_size > 0
     win_step = int(args.win_step)
@@ -566,8 +567,10 @@ def main():
     print('\n[INFO] Processing data and plotting\n', file=sys.stderr)
     outfile = f"{outfile_prefix}_{chrom}"
     if not os.path.exists(f"{outfile}.pc1.tsv") and not os.path.exists(f"{outfile}.pc1.supplementary_info.tsv"):
-        window_start_arr, windows_stop_arr, windows_mid_arr = compile_window_arrays(chrom_start, chrom_end, win_size, win_step)
         gt_arr, pos_arr, metadata_df = prepare_data(genos, meta, group, group_id, color_by)
+        if chrom_end is None:
+            chrom_end = pos_arr[-1]
+        window_start_arr, windows_stop_arr, windows_mid_arr = compile_window_arrays(chrom_start, chrom_end, win_size, win_step)
         # run PCA in windows
         pc_1_df, pc_2_df, additional_info_df = do_pca(gt_arr, pos_arr, window_start_arr, windows_mid_arr, windows_stop_arr, metadata_df, phased, win_size)
         del gt_arr, pos_arr
