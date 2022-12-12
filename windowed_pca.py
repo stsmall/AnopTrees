@@ -481,28 +481,6 @@ def save_results(additional_info_df, pc_dfs, outfile, color_by, chrom, chrom_sta
     additional_info_df = additional_info_df.fillna(value='NA')
     additional_info_df.to_csv(f"{outfile}.supplementary_info.tsv", sep='\t', index=False)
     
-def read_existing_data(data_file, supplemental_file):
-    """_summary_
-
-    Parameters
-    ----------
-    data_file : _type_
-        _description_
-    supplemental_file : _type_
-        _description_
-
-    Returns
-    -------
-    _type_
-        _description_
-    """
-    print('\n[INFO] Reading in existing data\n', file=sys.stderr, flush=True)
-    pc_df = pd.read_csv(data_file,  sep='\t', index_col=None)
-    pc_df.fillna('NA', inplace=True)
-    additional_info_df = pd.read_csv(supplemental_file,  sep='\t', index_col=None)
-    additional_info_df.fillna(np.nan, inplace=True)
-    return pc_df, additional_info_df
-
 def parse_args(args_in):
     """Parse args."""
     prog = argparse.ArgumentDefaultsHelpFormatter
@@ -586,11 +564,8 @@ def main():
         pc_2_df = calibrate_annotate(pc_2_df, metadata_df, 'pc2', var_threshold=var_thresh, mean_threshold=mean_thresh)
         # save and plot
         save_results(additional_info_df, [pc_1_df, pc_2_df], outfile, color_by, chrom, chrom_start, chrom_end)
-    else:  #exists so reread info
-        print('\n[INFO] Reading in existing data\n', file=sys.stderr, flush=True)
-        pc_1_df, additional_info_df1 = read_existing_data(f"{outfile_prefix}_{chrom}.pc1.tsv", f"{outfile_prefix}_{chrom}.pc1.supplementary_info.tsv")
-        pc_2_df, additional_info_df2 = read_existing_data(f"{outfile_prefix}_{chrom}.pc2.tsv", f"{outfile_prefix}_{chrom}.pc2.supplementary_info.tsv")
-
+    else: 
+        sys.exit("Outfile already exists")
 
 if __name__ == "__main__":
     import time
