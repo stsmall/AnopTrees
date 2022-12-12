@@ -21,7 +21,11 @@ import argparse
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+#import dask
 import plotly.express as px
+
+with dask.config.set(**{'array.slicing.split_large_chunks': False}):
+    array[indexer]
 
 
 def check_order(panel, samples):
