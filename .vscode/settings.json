@@ -1,9 +1,0 @@
-{
-    "python.linting.flake8Enabled": true,
-    "python.linting.enabled": true,
-    "python.linting.pylintEnabled": true,
-    "cSpell.words": [
-        "estsfs"
-    ],
-    "cSpell.enabled": false
-}
