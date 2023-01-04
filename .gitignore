@@ -1,3 +1,7 @@
+results/
+resources/
+tests/
+*.benchmark
+*.log
 *.vscode
 *.pyc
-settings.json

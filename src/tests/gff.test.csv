@@ -1,9 +1,0 @@
-contig,start,end,type,name,parent,description
-X,1,20,intergenic,,,
-X,20,65,exon,AGAP000002-RA,,WW domain-containing protein
-X,20,65,CDS,AGAP000002-RA,AGAP000002-RA-E4,WW domain-containing protein
-X,65,90,intron,,,
-X,90,95,exon,AGAP000002-RA,,WW domain-containing protein
-X,90,95,CDS,AGAP000002-RA,AGAP000002-RA-E3,WW domain-containing protein
-X,95,120,five_prime_UTR,AGAP000002-RA,test,WW domain-containing protein
-X,120,24000000,intergenic,,,
