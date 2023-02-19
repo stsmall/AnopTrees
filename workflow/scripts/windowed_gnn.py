@@ -2,73 +2,100 @@
 """
 @File    :  windowed_gnn.py
 @Time    :  2022/10/17 15:59:13
-@Author  :  Scott T Small 
+@Author  :  Scott T Small
 @Version :  1.0
 @Contact :  stsmall@gmail.com
 @License :  Released under MIT License Copyright (c) 2022 Scott T. Small
-@Desc    :  Runs genealogical nearest neighbor function on input trees can 
+@Desc    :  Runs genealogical nearest neighbor function on input trees can
             use either windowed or whole chromosome
 @Notes   :  This module is a direct implementation of:
                 https://github.com/tskit-dev/tskit/issues/665
 @Usage   :  python windowed_gnn.py --tree FOO.chrom.trees --groups country --outfile FOO.chrom.gnn.csv
             python windowed_gnn.py --tree FOO.chrom.trees --groups country --outfile FOO.chrom.gnn.csv
-            --tar Mayotte --gnn_windows
+            --tar Mayotte --gnn_windows --ancestry
 """
 
 import sys
+import time
 from os import path
 import argparse
 from collections import defaultdict
 import tskit
 import json
-import pandas as pd
 import numpy as np
 
 
-def gnn_fx(outfile, ts, ref_samples, target_samples, pop_ids, groups, samples="sample_name"):
-    """Run mean GNN fx.
+def gnn_fx(outfile, ts, ref_samples, target_samples, groups, chrom, ancestry, samples="sample_name"):
+    """_summary_
 
     Parameters
     ----------
-    outfile : TYPE
-        DESCRIPTION.
-    ts : TYPE
-        DESCRIPTION.
-    ref_samples : TYPE
-        DESCRIPTION.
-    target_samples : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    None.
-
+    outfile : str
+        name for outfile
+    ts : object
+        treesequence
+    ref_samples : list
+        list of int denoting nodes(haps) in the treesequence
+    target_samples : list
+        list of int denoting nodes(haps) in the treesequence
+    groups : str
+        keyword for grouping samples
+    chrom : str
+        chromosome, used in outfile
+    ancestry : bool
+        use ancestry by removing self in comparisons
+    samples : str, optional
+        name in metadata for sample, by default "sample_name"
     """
-    # calc gnn
-    gnn = ts.genealogical_nearest_neighbours(target_samples, ref_samples)
-    
-    # write out df
-    sample_nodes = [ts.node(n) for n in ts.samples()]
-    sample_ids = [n.id for n in sample_nodes]
-    sample_names = [json.loads(ts.individual(n.individual).metadata)[samples] for n in sample_nodes]
-    sample_pops = [json.loads(ts.population(n.population).metadata)[groups] for n in sample_nodes]
-    gnn_table = pd.DataFrame(data=gnn,
-                            index=[pd.Index(sample_pops, name=groups)],
-                            columns=pop_ids)
-    gnn_table.insert(0, samples, sample_names) 
-    gnn_table.insert(1, "node_id", sample_ids)
-    gnn_table.to_csv(f"{outfile}.gnn.csv")
-
+    if not any(isinstance(i, list) for i in target_samples):
+        target_samples = [target_samples]
+    # get all pop_ids
+    sample_nodes = [ts.node(n) for r in ref_samples for n in r]
+    ref_pop = [json.loads(ts.individual(n.individual).metadata)[groups] for n in sample_nodes]
+    ref_pop_ids = list(dict.fromkeys(ref_pop))
+    if not ancestry:
+        target_samples = [[n for r in target_samples for n in r]]
+    # open file yo
+    with open(f"{outfile}.gnn.csv", 'w') as f:
+        f.write(f'chromosome,sample_id,target_pop,{",".join(ref_pop_ids)}\n')
+        # start looping
+        for temp_tar in target_samples:
+            if ancestry:
+                temp_ref = [x for x in ref_samples if x != temp_tar]
+            else:
+                temp_ref = ref_samples
+            # calc gnn
+            gnn = ts.genealogical_nearest_neighbours(temp_tar, temp_ref)
+            # get tar pops
+            sample_nodes = [ts.node(n) for n in temp_tar]
+            sample_names = [json.loads(ts.individual(n.individual).metadata)[samples] for n in sample_nodes]
+            tar_pop = [json.loads(ts.individual(n.individual).metadata)[groups] for n in sample_nodes]
+            # insert empty np.array into pos where tar_pop would be
+            if ancestry:
+                ix = ref_pop_ids.index(tar_pop[0])
+                gnn = np.insert(gnn, ix, np.zeros(len(gnn)), axis=1)
+            # gen sample IDs
+            inds = []
+            for samp in sample_names:
+                totalcount = inds.count(f"{samp}_0")
+                inds.append(f"{samp}_1" if totalcount > 0 else f"{samp}_0")
+            # write out df
+            try:
+                for i, s in enumerate(inds):
+                    gnns = ",".join(map(str, gnn[i]))
+                    f.write(f"{chrom},{s},{tar_pop[i]},{gnns}\n")
+            except IndexError:
+                breakpoint()
 
 def parse_time_windows(ts, time_windows):
     """Parse time windows.
 
     Parameters
     ----------
-    ts : TYPE
-        DESCRIPTION.
-    time_windows : TYPE
-        DESCRIPTION.
+    ts : object
+        treesequence
+    time_windows : list
+        int or float referencing time in the treesequence
 
     Returns
     -------
@@ -76,12 +103,19 @@ def parse_time_windows(ts, time_windows):
         DESCRIPTION.
 
     """
+    T = ts.max_root_time
     if time_windows is None:
-        time_windows = [0.0, ts.max_root_time]
+        time_windows = [0.0, T]
     return np.array(time_windows)
 
 
-def windowed_gnn(ts, focal, reference_sets, windows=None, time_windows=None, span_normalise=True, time_normalise=True):
+def windowed_gnn(ts,
+                focal,
+                reference_sets,
+                windows=None,
+                time_windows=None,
+                span_normalise=True,
+                time_normalise=True):
     """Run GNN in windows.
 
     Genealogical_nearest_neighbours with support for span- and time-based windows.
@@ -106,12 +140,12 @@ def windowed_gnn(ts, focal, reference_sets, windows=None, time_windows=None, spa
     Raises
     ------
     ValueError
-        DESCRIPTION.
+        if duplicate samples
 
     Returns
     -------
-    A : TYPE
-        DESCRIPTION.
+    A : numpy array
+
 
     """
     reference_set_map = np.zeros(ts.num_nodes, dtype=int) - 1
@@ -120,11 +154,19 @@ def windowed_gnn(ts, focal, reference_sets, windows=None, time_windows=None, spa
             if reference_set_map[u] != -1:
                 raise ValueError("Duplicate value in reference sets")
             reference_set_map[u] = k
-
-    windows_parsed = ts.parse_windows(windows)
+    # check set spatial windows
+    if windows is None:
+        windows_parsed = ts.parse_windows("trees")
+    else:
+        windows_parsed = ts.parse_windows(windows)
     num_windows = windows_parsed.shape[0] - 1
-    time_windows_parsed = parse_time_windows(ts, time_windows)
+    # check set time windows
+    if time_windows is None:
+        time_windows_parsed = parse_time_windows(ts, time_windows)
+    else:
+        time_windows_parsed = time_windows  # ts.parse_windows(time_windows)
     num_time_windows = time_windows_parsed.shape[0] - 1
+    # set recording mats
     A = np.zeros((num_windows, num_time_windows, len(focal), len(reference_sets)))
     K = len(reference_sets)
     parent = np.zeros(ts.num_nodes, dtype=int) - 1
@@ -191,10 +233,12 @@ def windowed_gnn(ts, focal, reference_sets, windows=None, time_windows=None, spa
         # norm[norm == 0] = 1
         A /= norm.reshape((num_windows, num_time_windows, len(focal), 1))
     elif span_normalise and not time_normalise:
+        breakpoint()
         norm = np.sum(norm, axis=1)
         # norm[norm == 0] = 1
         A /= norm.reshape((num_windows, 1, len(focal), 1))
     elif time_normalise and not span_normalise:
+        breakpoint()
         norm = np.sum(norm, axis=0)
         # norm[norm == 0] = 1
         A /= norm.reshape((1, num_time_windows, len(focal), 1))
@@ -203,80 +247,165 @@ def windowed_gnn(ts, focal, reference_sets, windows=None, time_windows=None, spa
 
     # Remove dimension for windows and/or time_windows if parameter is None
     if windows is None and time_windows is not None:
-        A = A.reshape((num_time_windows, len(focal), len(reference_sets)))
+        A = np.nanmean(A, axis=0)
+        #A = A.reshape((num_time_windows, len(focal), len(reference_sets)))
     elif time_windows is None and windows is not None:
         A = A.reshape((num_windows, len(focal), len(reference_sets)))
     elif time_windows is None and windows is None:
-        A = A.reshape((len(focal), len(reference_sets)))
-    return A
+        A = np.nanmean(A, axis=0)
+        #A = A.reshape((len(focal), len(reference_sets)))
+    return A, windows_parsed, time_windows_parsed
 
 
-def gnn_windows_fx(outfile, ts, ref_samples, target_samples, pop_ids, groups, samples="sample_name"):
-    """Calculate gnn in windows.
+def gnn_windows_fx(outfile, ts,
+                    ref_samples,
+                    target_samples,
+                    groups,
+                    chrom,
+                    ancestry,
+                    win_size,
+                    time_list,
+                    samples="sample_name"):
+    """_summary_
 
     Parameters
     ----------
-    ts : Iterator
-        tskit object, iterator of trees
-    ref_samples : List
-        list of reference sample nodes; [[0,2,3],[9,10,11]]
-    target_sample : List
-        list of target samples; [0,1,2,3]
-    pop_ids : List
-        list of population ids; ["K", "F"]
-
-    Returns
-    -------
-    None.
-
+    outfile : _type_
+        _description_
+    ts : _type_
+        _description_
+    ref_samples : _type_
+        _description_
+    target_samples : _type_
+        _description_
+    groups : _type_
+        _description_
+    chrom : _type_
+        _description_
+    ancestry : _type_
+        _description_
+    win_size : _type_
+        _description_
+    samples : str, optional
+        _description_, by default "sample_name"
     """
-    windows = list(ts.breakpoints())  # all trees
-    gnn_win = windowed_gnn(ts, target_samples, ref_samples, windows=windows)
+    assert not any(isinstance(i, list) for i in target_samples), "gnn_windows can only work on a single target list"
 
-    # save as df
-    sample_nodes = [ts.node(n) for n in target_samples]
+    if ancestry:
+        # remove target pop from refs
+        ref_samples = [i for i in ref_samples if i != target_samples]
+
+    # window size
+    tables = ts.dump_tables()
+    sites = tables.sites.position[:]
+    first_site = sites[0]
+    last_site = sites[-1]
+    windows = None
+    if win_size:
+        L = int(ts.sequence_length)
+        windows = np.round(np.linspace(first_site, last_site, num=L//win_size))
+    time_windows = None
+    if time_list:
+        T = int(ts.max_root_time)
+        time_windows = [0] + time_list + [T]
+        time_windows = np.array(time_windows)
+    # run gnn_windows fx
+    gnn_win, win_i, time_i = windowed_gnn(ts, target_samples, ref_samples, windows=windows, time_windows=time_windows)
+    print(time_windows)
+    print(time_i)
+    ## write out results
+    # get ref pops
+    if any(isinstance(i, list) for i in ref_samples):
+        sample_nodes = [ts.node(n) for r in ref_samples for n in r]
+    else:
+        sample_nodes = [ts.node(n) for n in ref_samples]
+    ref_pop = [json.loads(ts.individual(n.individual).metadata)[groups] for n in sample_nodes]
+    ref_pop_ids = list(dict.fromkeys(ref_pop))
+
+    # get tar pops
+    if any(isinstance(i, list) for i in target_samples):
+        sample_nodes = [ts.node(n) for r in target_samples for n in r]
+    else:
+        sample_nodes = [ts.node(n) for n in target_samples]
     sample_names = [json.loads(ts.individual(n.individual).metadata)[samples] for n in sample_nodes]
-    sample_names = list(dict.fromkeys(sample_names))
-    col_names = [f"{n}_{i}" for n in sample_names for i in [0, 1]]
-    
-    chrom = "3L"
-    left = list(ts.breakpoints())[:-1]
-    right = list(ts.breakpoints())[1:]
-    breakpoint()
-    with open(f"{outfile}.gnn_windows.csv") as f:
-        f.write(f'chromosome,sample_id,left_coord,right_coord,{",".join(pop_ids)}\n')
-        for s in col_names:
-            for i in range(len(left)): 
-                f.write(f"{chrom},{s},{left[i]},{right[i]},{gnn_win[i]}\n")
-                
-    
-    #iterables = [col_names, pop_ids]
-    #index = pd.MultiIndex.from_product(iterables, names=[samples, groups])
-    #gnn_table = pd.DataFrame(data=np.reshape(gnn_win,[len(gnn_win), np.product(gnn_win.shape[1:])]), columns=index)
-    #gnn_table.insert(loc=0, column="left_bp", value = list(ts.breakpoints())[:-1])
-    #gnn_table.insert(loc=1, column="right_bp", value = list(ts.breakpoints())[1:])
-    #gnn_table.to_csv(f"{outfile}.gnn_windows.csv")
-    
+    tar_pop = [json.loads(ts.individual(n.individual).metadata)[groups] for n in sample_nodes]
+    tar_pop_ids = list(dict.fromkeys(tar_pop))
 
+    col_names = []
+    for samp in sample_names:
+        totalcount = col_names.count(f"{samp}_0")
+        col_names.append(f"{samp}_1" if totalcount > 1 else f"{samp}_0")
+
+    # write out to file
+    left = list(win_i)[:-1]
+    right = list(win_i)[1:]
+    if windows is None and time_windows is None:
+        # none of --win_size OR --max_time
+        # 1, samples, refs should be equivalent to gnn whole genome
+        with open(f"{outfile}.gnn_windows.csv", 'w') as f:
+            f.write(f'chromosome,target_pop,sample_id,{",".join(ref_pop_ids)}\n')
+            for j, s in enumerate(col_names):
+                gnns = ",".join(map(str, gnn_win[0][j]))
+                f.write(f"{chrom},{tar_pop_ids[0]},{s},{gnns}\n")
+    elif windows is not None and time_windows is None:
+        # --win_size INT
+        #23 trees x 34 samples x 15 refpops
+        with open(f"{outfile}.gnn_windows.csv", 'w') as f:
+            f.write(f'chromosome,target_pop,sample_id,left_coord,right_coord,{",".join(ref_pop_ids)}\n')
+            for i in range(len(left)):
+                for j, s in enumerate(col_names):
+                    gnns = ",".join(map(str, gnn_win[i][j]))
+                    f.write(f"{chrom},{tar_pop_ids[0]},{s},{int(left[i])},{int(right[i])},{gnns}\n")
+    elif windows is None:# and time_windows is not None:
+        #--max_time INT
+        #5 time x 34 samples x 15 refpops; what I want to plot
+        with open(f"{outfile}.gnn_windows.csv", 'w') as f:
+            f.write(f'chromosome,target_pop,sample_id,time,{",".join(ref_pop_ids)}\n')
+            for k, epoch in enumerate(time_windows[1:]):
+                for j, samp in enumerate(col_names):
+                    gnns = ",".join(map(str, gnn_win[k][j]))
+                    f.write(f"{chrom},{tar_pop_ids[0]},{samp},{epoch},{gnns}\n")
+    else:
+    #elif windows is not None and time_windows is not None:
+        # --win_size INT --max_time INT
+        #23 trees x 5 times x 34 samples x 15 refpops
+        with open(f"{outfile}.gnn_windows.csv", 'w') as f:
+            f.write(f'chromosome,target_pop,sample_id,time,left_coord,right_coord,{",".join(ref_pop_ids)}\n')
+            for i in range(len(left)):
+                for k, epoch in enumerate(time_windows[1:]):
+                    for j, samp in enumerate(col_names):
+                        gnns = ",".join(map(str, gnn_win[i][k][j]))
+                        f.write(f"{chrom},{tar_pop_ids[0]},{samp},{epoch},{int(left[i])},{int(right[i])},{gnns}\n")
+        
 
 def parse_args(args_in):
     """Parse args."""
     parser = argparse.ArgumentParser(prog=sys.argv[0],
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--tree", type=str, required=True,
                         help="tskit tree object")
-    parser.add_argument("--tar", type=str, default=None,
-                        help="target nodes")
-    parser.add_argument("--ref", type=str, default=None, 
-                        help="reference nodes")
-    parser.add_argument("--groups", type=str, required=True, 
+    parser.add_argument("--chrom", type=str, required=True,
+                        help="name for chromosome in file")
+    parser.add_argument("--groups", type=str, required=True,
                         help="How to cluster individuals")
-    parser.add_argument("--gnn_windows", action="store_true",
-                        help="run gnn in windows mode")
     parser.add_argument("--outfile", type=str, default=None,
                         help="name for output file")
-    parser.add_argument("--threads", type=int, default=1,
-                        help="number threads")
+    parser.add_argument("--tar", type=str, default=None,
+                        help="target nodes by group name, if None will use all")
+    parser.add_argument("--ref", type=str, default=None,
+                        help="reference nodes by group name, if None will use all")
+    parser.add_argument("--ancestry", action="store_true",
+                        help="remove target pop from refs, default is to include it")
+    parser.add_argument("--gnn_windows", action="store_true",
+                        help="run gnn in windows mode")
+    parser.add_argument("--win_size", type=int, default=None,
+                        help="size of default spatial window in gnn_windows mode")
+    parser.add_argument("--times", nargs="+", type=int, default=None,
+                        help="times to estimate gnn over")
+    parser.add_argument("--down_sample", type=int, default=None,
+                        help="down sample all groups to this size")
+    parser.add_argument("--regions", type=str, default=None,
+                        help="regions to include in analyses")
     return parser.parse_args(args_in)
 
 
@@ -286,59 +415,78 @@ def main():
     # =========================================================================
     #  Gather args
     # =========================================================================
+    # required
     tree = args.tree
+    chrom = args.chrom
+    groups = args.groups
     outfile = args.outfile
     if outfile is None:
         outfile = path.split(tree)[-1]
+    # set vals, default all
     ref_set = args.ref
     tar_set = args.tar
+    # flags as True
     gnn_win = args.gnn_windows
-    groups = args.groups
+    ancestry = args.ancestry
+    # options default set
+    win_size = args.win_size
+    time_list = args.times
+    dwn_sample = args.down_sample
+    regions = args.regions
     # =========================================================================
     #  Loading and Checks
     # =========================================================================
     # load tree
+    # load tree sequence
+    tic = time.perf_counter()
     ts = tskit.load(tree)
-    print("tree loaded")
+    toc = time.perf_counter()
+    print(f"trees loaded in {toc - tic:0.4f} seconds")
     # get group data
     group_dt = defaultdict(list)
     for n in ts.samples():
         individual_data = ts.individual(ts.node(n).individual)
-        gt = json.loads(individual_data.metadata)["country"]
+        gt = json.loads(individual_data.metadata)[groups]
         group_dt[gt].append(n)
-    # make pop_ids list for column labels
-    pop_ids = list(group_dt.keys())
-    # set reference for comparison
-    if ref_set is None:
-        ref_nodes = list(group_dt.values())
-    elif path.exists(ref_set):
-        ref_nodes = []
-        with open(ref_set) as f:
-            for line in f:
-                x = line.split(",")
-                assert len(x) > 1, "recheck delimiter should be ,"
-                ref_nodes.append(list(map(int, x)))
-    else:
-        ref_nodes = group_dt[ref_set]
+    # down sample
+    if dwn_sample:
+        for gt, haps in group_dt.items():
+            if len(haps) > dwn_sample:
+                subset = list(np.random.choice(haps, dwn_sample, replace=False))
+                group_dt[gt] = sorted(subset)
     # set target population
-    if tar_set is None:
-        tar_nodes = [item for sublist in group_dt.values() for item in sublist]
-    elif path.exists(tar_set):
-        tar_nodes = []
-        with open(tar_set) as f:
-            for line in f:
-                x = line.split(",")
-                assert len(x) > 1, "recheck delimiter should be ,"
-                tar_nodes.extend(list(map(int, x)))
-    else:
-        tar_nodes = group_dt[tar_set]
+    tar_nodes = list(group_dt.values()) if tar_set is None else group_dt[tar_set]
+    # set reference for comparison
+    ref_nodes = list(group_dt.values()) if ref_set is None else group_dt[ref_set]
+    if regions:
+        regions_list = []
+        with open(regions) as r:
+            for line in r:
+                rchrom, rstart, rend = line.split()
+                if rchrom == chrom:
+                    regions_list.append((int(rstart)+1, int(rend)))
+        print(f"keeping intevals {regions_list}")
+        regions_arr = np.array(regions_list)
+        tic = time.perf_counter()
+        ts = ts.keep_intervals(regions_arr)
+        toc = time.perf_counter()
+        print(f"trees keep intervals {toc - tic:0.4f} seconds")     
     # =========================================================================
     #  Main executions
     # =========================================================================
+    # could also just pass a time windows list [0, 1000, 10000, 100000]
     if gnn_win:
-        gnn_windows_fx(outfile, ts, ref_nodes, tar_nodes, pop_ids, groups)
+        gnn_windows_fx(outfile,
+                        ts,
+                        ref_nodes,
+                        tar_nodes,
+                        groups,
+                        chrom,
+                        ancestry,
+                        win_size,
+                        time_list)
     else:
-        gnn_fx(outfile, ts, ref_nodes, tar_nodes, pop_ids, groups)
+        gnn_fx(outfile, ts, ref_nodes, tar_nodes, groups, chrom, ancestry)
 
 
 if __name__ == "__main__":
